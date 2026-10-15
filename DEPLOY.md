@@ -14,7 +14,8 @@ Vite dev server (`npm.cmd run dev` ใน client) ยังใช้พัฒน
 
 ## ตัวอย่างตั้งค่า Render Web Service
 
-ยังไม่ได้สร้างหรือ Deploy บริการจริง ให้ตรวจโค้ด Commit และ Push Branch ก่อน
+Deploy แล้วที่ https://short-url-4xil.onrender.com จาก Branch `Setup-Deploy` ตามขั้นตอนของโปรเจกต์
+ค่าลับจริงตั้งใน Render Environment เท่านั้น ขั้นตอนด้านล่างใช้ติดตั้งใหม่หรืออ้างอิง
 เลือก GitHub repository และ Branch ที่ต้องการทดสอบ เช่น `Setup-Deploy`
 
 - Runtime: Node
