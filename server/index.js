@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('node:path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
 const pool = require('./db');
@@ -18,8 +19,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serve the Vue production build from the same origin as the API.
+// Unmatched API and redirect routes keep their normal 404 response.
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
 async function startServer() {
   try {
+    const baseUrl = new URL(process.env.PUBLIC_BASE_URL);
+    if (!['http:', 'https:'].includes(baseUrl.protocol) || baseUrl.username || baseUrl.password || baseUrl.pathname !== '/' || baseUrl.search || baseUrl.hash) {
+      throw new Error('PUBLIC_BASE_URL must be an HTTP(S) origin, e.g. https://your-app.onrender.com');
+    }
     await pool.query('SELECT id FROM links LIMIT 1');
 
     console.log('Connected to PostgreSQL');
