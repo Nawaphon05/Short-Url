@@ -24,8 +24,15 @@ async function switchMode(target) {
   password.value = ''; confirm.value = ''; error.value = ''; success.value = ''; visible.value = false;
   await nextTick(); emailInput.value?.focus();
 }
-async function submit() {
+async function submit(event) {
   if (busy.value) return;
+  // Autofill can update the DOM without emitting Vue input events.
+  if (event?.currentTarget) {
+    const fields = new FormData(event.currentTarget);
+    email.value = String(fields.get('username') || '');
+    password.value = String(fields.get('password') || '');
+    if (signup.value) confirm.value = String(fields.get('confirm-password') || '');
+  }
   error.value = ''; success.value = '';
   if (signup.value && password.value !== confirm.value) { error.value = 'Password ทั้งสองช่องไม่ตรงกัน'; return; }
   busy.value = true;
@@ -45,12 +52,12 @@ async function submit() {
       // Ask the browser's password manager to save credentials, never web storage.
       if (remember.value && window.PasswordCredential && navigator.credentials?.store) {
         try {
-          await navigator.credentials.store(new window.PasswordCredential({ id: data.user.email, password: password.value }));
+          void navigator.credentials.store(new window.PasswordCredential({ id: data.user.email, password: password.value })).catch(() => {});
         } catch { /* Browser policy or the user can decline password saving. */ }
       }
       password.value = ''; emit('authenticated', data.user);
     }
-  } catch { error.value = 'เชื่อมต่อไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'; }
+  } catch (err) { error.value = err.serviceUnavailable ? err.message : 'เชื่อมต่อไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'; }
   finally { busy.value = false; }
 }
 </script>

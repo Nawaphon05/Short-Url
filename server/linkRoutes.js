@@ -78,7 +78,7 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
   const page = Number(req.query.page || 1);
-  const limit = 20;
+  const limit = 10;
 
   if (!Number.isSafeInteger(page) || page < 1 || page > 10000) {
     return res.status(400).json({

@@ -78,6 +78,18 @@ test('auth, ownership, migration and public redirects against isolated local Pos
     const redirect = await call(route); assert.equal(redirect.status,302); assert.equal(redirect.headers.get('location'),'https://example.com/product');
     assert.equal((await (await call('/api/links',{cookie:a.cookie})).json()).items[0].clicks,'1');
     assert.equal((await call('/r/legacy01',{method:'HEAD'})).status,302);
+    // Verify the exact page boundary and no duplicates across pages.
+    for (let n = 1; n <= 9; n++) await pool.query(`INSERT INTO ${schema}.links(code,original_url,user_id) VALUES($1,$2,$3)`, [`page${String(n).padStart(4,'0')}`,'https://example.com/pagination',a.user.id]);
+    const ten = await (await call('/api/links',{cookie:a.cookie})).json();
+    assert.equal(ten.items.length,10); assert.equal(ten.hasMore,false);
+    await pool.query(`INSERT INTO ${schema}.links(code,original_url,user_id) VALUES('page0010','https://example.com/last',$1)`,[a.user.id]);
+    const first = await (await call('/api/links?page=1',{cookie:a.cookie})).json();
+    const second = await (await call('/api/links?page=2',{cookie:a.cookie})).json();
+    assert.equal(first.items.length,10); assert.equal(first.hasMore,true);
+    assert.equal(second.items.length,1); assert.equal(second.hasMore,false); assert.equal(second.page,2);
+    assert.equal(new Set([...first.items,...second.items].map(x=>x.id)).size,11);
+    assert.equal((await (await call('/api/links',{cookie:b.cookie})).json()).items.length,0);
+    for (const page of ['0','-1','1.5','bad','10001']) assert.equal((await call(`/api/links?page=${page}`,{cookie:a.cookie})).status,400);
     assert.equal((await call('/api/auth/logout',{method:'POST',cookie:a.cookie,body:{}})).status,204);
     assert.equal((await call('/api/auth/me',{cookie:a.cookie})).status,401);
     await pool.query(`UPDATE ${schema}.sessions SET expires_at=now()-interval '1 second',created_at=now()-interval '2 days' WHERE user_id=$1`,[b.user.id]);
