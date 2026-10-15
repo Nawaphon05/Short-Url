@@ -3,6 +3,7 @@ const { randomBytes } = require('node:crypto');
 const pool = require('./db');
 
 const router = express.Router();
+router.use(require('./auth').requireUser);
 
 function validateUrl(value) {
   if (typeof value !== 'string' || value.length > 4096) {
@@ -26,16 +27,16 @@ function validateUrl(value) {
   }
 }
 
-async function createLink(originalUrl) {
+async function createLink(originalUrl, userId) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = randomBytes(6).toString('base64url');
 
     try {
       const result = await pool.query(
-        `INSERT INTO links (code, original_url)
-         VALUES ($1, $2)
+        `INSERT INTO links (code, original_url, user_id)
+         VALUES ($1, $2, $3)
          RETURNING *`,
-        [code, originalUrl]
+        [code, originalUrl, userId]
       );
 
       return result.rows[0];
@@ -59,7 +60,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const link = await createLink(originalUrl);
+    const link = await createLink(originalUrl, req.user.id);
     const baseUrl = process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
 
     res.status(201).json({
@@ -91,9 +92,10 @@ router.get('/', async (req, res) => {
     const result = await pool.query(
       `SELECT id, code, original_url, clicks, created_at
        FROM links
+       WHERE user_id = $3
        ORDER BY created_at DESC, id DESC
        LIMIT $1 OFFSET $2`,
-      [limit + 1, offset]
+      [limit + 1, offset, req.user.id]
     );
 
     const baseUrl = process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
