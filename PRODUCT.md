@@ -13,13 +13,13 @@ web
 ## Capabilities and Constraints
 
 - Vue + CSS, Node.js/Express JavaScript และ PostgreSQL คงเทคโนโลยีเดิม
-- ประวัติเป็นข้อมูลรวม ไม่มีบัญชีผู้ใช้หรือประวัติส่วนตัว จำนวนคลิกรวมการเปิดซ้ำ รีเฟรชเพื่อดูค่าล่าสุด
-- รอบนี้ปรับ Frontend ไม่เปลี่ยน Backend, API, Schema ไม่เพิ่ม dependency หรือข้อมูลสมมติ
+- Branch Feature/login เพิ่ม Sign up, Login, Logout และประวัติส่วนตัว ลิงก์เก่ายังเปิดได้แต่ไม่มีเจ้าของ จำนวนคลิกรวมการเปิดซ้ำ
+- รอบล็อกอินแก้ Frontend, Backend และมี SQL migration เพิ่ม users/sessions โดยไม่เพิ่ม dependency; ไม่เปลี่ยนฐานข้อมูล Render หรือ Deploy โดยอัตโนมัติ
 - Deploy, Architecture Diagram และ Microservice ทำภายหลัง ไม่ Commit หรือ Push จนกว่าผู้ใช้สั่ง
 
 ## Brand Commitments
 
-ภาษาไทยเป็นหลัก เขียวเข้ม พื้นอ่อน หัวเว็บกระชับ เน้นช่อง URL และปุ่มสร้างลิงก์ เปิด QR เมื่อกด ไม่มี Hero ใหญ่ gradient หรือข้อความโฆษณา
+ภาษาไทยเป็นหลัก ใช้ Login/Sign up/Logout ในส่วนสมาชิก ธีมล่าสุดใช้สีจากโลโก้ SYNERRY ที่ผู้ใช้ส่งเป็นแนวทาง: แดง ดำชาร์โคล ขาว และเทาอ่อน โดยคงชื่อ Short URL หัวเว็บกระชับ เน้นช่อง URL และปุ่มสร้างลิงก์ เปิด QR เมื่อกด ไม่มี Hero ใหญ่ gradient หรือข้อความโฆษณา
 
 ## Accessibility & Inclusion
 

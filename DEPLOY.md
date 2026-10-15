@@ -1,5 +1,11 @@
 # เตรียม Deploy Short URL
 
+## ก่อน Deploy Branch ล็อกอิน
+
+Branch `Feature/login` ต้องใช้ schema ใหม่: สำรองข้อมูลแล้วรัน `server/migrations/001_auth.sql` บนฐานข้อมูลปลายทางด้วยบัญชีเจ้าของตาราง ก่อน Deploy โค้ดใหม่ คงลิงก์เดิมที่ user_id เป็น NULL ไม่โอนให้บัญชีแรก
+ยังไม่ได้อัปเดตฐานข้อมูล Render หรือ Deploy ล็อกอินในรอบนี้ Cookie ใช้ Secure บน production จึงต้องทดสอบผ่าน HTTPS และตั้ง PUBLIC_BASE_URL ให้ตรงกับ Origin จริง
+ทดสอบสองบัญชีและ Logout หลัง Deploy อย่าใช้ `npm test` หรือ migrate:local กับ Hosting
+
 ระบบนี้เป็น Vue + Express + PostgreSQL แบบ Backend เดียว ยังไม่ใช่ Microservice
 Express เสิร์ฟไฟล์ `client/dist` และ API จาก URL เดียวกัน จึงไม่ต้องเพิ่ม CORS
 
@@ -41,7 +47,7 @@ Hosting จะกำหนด `PORT` ให้ ไม่จำเป็นต้
 ตรวจไฟล์ SQL ก่อนรัน ห้าม Restore ทับฐานข้อมูลที่มีข้อมูลโดยไม่สำรองก่อน
 ไม่จำเป็นต้องย้ายประวัติทดสอบในเครื่อง หากต้องการเริ่มฐานข้อมูลออนไลน์ว่าง
 
-ยังไม่มี migration script ที่ตรวจรับรองใน repository นี้ จึงต้องตรวจ schema ที่ export จริงก่อนนำขึ้น Hosting
+Branch ล็อกอินมี migration `server/migrations/001_auth.sql` ที่ทดสอบในเครื่องแล้ว ส่วน schema ตั้งต้นของ links อยู่ใน README ต้องตรวจฐานข้อมูลปลายทางจริงก่อนนำขึ้น Hosting
 ไม่มีการเปลี่ยนหรือย้ายข้อมูลในฐานข้อมูลจริงระหว่างเตรียมไฟล์ชุดนี้
 
 ## ตรวจหลัง Deploy
@@ -53,7 +59,7 @@ Hosting จะกำหนด `PORT` ให้ ไม่จำเป็นต้
 - ตรวจประวัติ สถานะผิดพลาด และ URL ที่ไม่มีอยู่ต้องตอบ 404
 - HEAD ของลิงก์ต้อง Redirect โดยไม่เพิ่มคลิก
 
-API ประวัติเป็นข้อมูลรวมที่คนอื่นอ่านได้ อย่าส่ง URL ส่วนตัวหรือมี token ลงเดโมสาธารณะ
+เวอร์ชันเดิมบน Render มีประวัติรวม หลัง Deploy Branch ล็อกอิน API จะคืนเฉพาะลิงก์ของเจ้าของตาม session อย่าส่ง URL ที่มี token ลับลงเดโม
 
 ## ข้อจำกัดแผนฟรี
 
