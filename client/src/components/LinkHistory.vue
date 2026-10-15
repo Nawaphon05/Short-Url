@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import LinkQr from './LinkQr.vue';
 import CopyLink from './CopyLink.vue';
 import { api } from '../api';
@@ -12,15 +12,20 @@ const announcement = ref('');
 const updatedAt = ref('');
 const changedIds = ref([]);
 let pendingRefresh = false;
+let disposed = false;
+let controller;
+onBeforeUnmount(() => { disposed = true; controller?.abort(); });
 async function loadHistory(targetPage = page.value) {
-  if (loading.value) return;
+  if (loading.value || disposed) return;
+  controller = new AbortController();
   loading.value = true;
   error.value = '';
   announcement.value = '';
   try {
-    const response = await api(`/api/links?page=${targetPage}`);
+    const response = await api(`/api/links?page=${targetPage}`, { signal: controller.signal });
     if (!response.ok) throw new Error();
     const data = await response.json();
+    if (disposed) return;
     if (!Array.isArray(data.items)) throw new Error();
     changedIds.value = data.items.filter(item => {
       const previous = links.value.find(link => link.id === item.id);
@@ -31,10 +36,12 @@ async function loadHistory(targetPage = page.value) {
     page.value = data.page;
     hasMore.value = data.hasMore;
     announcement.value = 'อัปเดตประวัติและจำนวนคลิกแล้ว';
-  } catch { error.value = 'โหลดประวัติไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วกดรีเฟรชอีกครั้ง'; }
+  } catch (err) {
+    if (!disposed && err.name !== 'AbortError') error.value = err.serviceUnavailable ? err.message : 'โหลดประวัติไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วกดรีเฟรชอีกครั้ง';
+  }
   finally {
     loading.value = false;
-    if (pendingRefresh) { pendingRefresh = false; await loadHistory(1); }
+    if (pendingRefresh && !disposed) { pendingRefresh = false; await loadHistory(1); }
   }
 }
 function formatDate(value) {

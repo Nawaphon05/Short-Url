@@ -21,7 +21,7 @@ async function checkSession() {
     if (response.status === 401) user.value = null;
     else if (!response.ok) throw new Error();
     else user.value = (await response.json()).user;
-  } catch { sessionError.value = 'ตรวจสอบบัญชีไม่ได้ กรุณาลองอีกครั้ง'; }
+  } catch (err) { sessionError.value = err.serviceUnavailable ? err.message : 'ตรวจสอบบัญชีไม่ได้ กรุณาลองอีกครั้ง'; }
   finally { checking.value = false; }
 }
 function expired() { user.value = null; shortUrl.value = ''; url.value = ''; error.value = ''; sessionError.value = 'Session หมดอายุ กรุณา Login อีกครั้ง'; }
