@@ -6,6 +6,20 @@
 
 ใช้ Vue + CSS, Node.js + Express (JavaScript) และ PostgreSQL เป็น Backend เดียว ยังไม่ใช่ Microservice
 
+## ฟังก์ชันใหม่ใน Branch feature/link-management
+
+ส่วนนี้พัฒนาและทดสอบในเครื่อง ยังไม่ได้ Deploy บน Render ไม่รวมอยู่ในผลออนไลน์ที่ยืนยันก่อนหน้านี้
+
+- ตั้งชื่อแสดงผลไม่เกิน 120 ตัวอักษร และแก้ชื่อในประวัติได้โดยไม่เปลี่ยน URL/QR
+- ค้นหาชื่อ URL ต้นฉบับ หรือรหัสลิงก์ ครอบคลุมข้อมูลทุกหน้า เฉพาะบัญชีตนเอง หน้าละ 10 รายการ
+- เลือกรหัส URL ตอนสร้างได้ 3–48 ตัว ใช้ A–Z, a–z, 0–9, - และ _ แยกตัวพิมพ์เล็ก/ใหญ่ รหัสต้องไม่ซ้ำทั้งระบบ ไม่กรอกจะสุ่ม 8 ตัวตามเดิม รหัสแก้ภายหลังไม่ได้
+- เลือกวันหมดอายุในอนาคตตามเวลาเครื่อง Browser ส่งเป็น UTC ให้ Server ไม่กำหนดหมายถึงไม่มีวันหมดอายุ
+- หมดอายุแล้ว GET/HEAD ตอบ HTTP 410 พร้อมหน้าอธิบาย ไม่ Redirect และไม่เพิ่มคลิก ลิงก์เก่ายังทำงานตามเดิม
+- ลบลิงก์พร้อมยืนยันก่อนลบได้เฉพาะเจ้าของ ใช้ soft delete (deleted_at) ซ่อนจากประวัติ/ค้นหา ลิงก์และ QR เดิมตอบ 410 ว่าถูกลบแล้ว ไม่เพิ่มคลิก เก็บ code ไม่ให้ใช้ซ้ำ และไม่มีปุ่มกู้คืน
+- Login/Logout มีการเปลี่ยนหน้าพร้อมแอนิเมชัน รองรับ prefers-reduced-motion
+
+ก่อนรันโค้ด Branch นี้: ฐานข้อมูลในเครื่องใช้ `npm.cmd run migrate:local --prefix server` ซึ่งรัน migration 001 → 002 → 003 ตามลำดับ บน Hosting สำรองก่อนแล้วรัน [002_link_management.sql](server/migrations/002_link_management.sql) หลัง 001 แล้วรัน [003_soft_delete.sql](server/migrations/003_soft_delete.sql) ก่อน Deploy โค้ดใหม่ ห้ามรันชุดทดสอบกับฐานข้อมูลออนไลน์
+
 ## สถานะ Login / Sign up
 
 **ออนไลน์ Deploy จาก `main` แล้ว** ผู้ใช้ยืนยันว่ารัน migration บน Render สำเร็จ และทดสอบ QR มือถือกับการแยกสองบัญชีผ่าน วันที่ 16 ตุลาคม 2026
@@ -48,7 +62,7 @@ npm.cmd ci --prefix server
 npm.cmd ci --prefix client
 ```
 
-ใช้ main ล่าสุดเป็นฐานติดตั้ง หากมี Repository แล้วให้ `git switch main` และ `git pull --ff-only` ก่อนแยก Branch สำหรับงานใหม่
+เวอร์ชันออนไลน์ปัจจุบันอยู่บน main ส่วนฟังก์ชันใหม่ในเอกสารนี้อยู่บน `feature/link-management` หากต้องการทดลองก่อน Merge ให้ `git switch feature/link-management` ก่อนติดตั้ง dependencies หลัง Merge แล้วจึงใช้ main ล่าสุดเป็นฐานติดตั้ง
 
 ## สร้างฐานข้อมูล
 
@@ -72,11 +86,11 @@ CREATE TABLE IF NOT EXISTS public.links (
 
 โครงสร้างนี้ตรงกับตารางเดิมที่ใช้ในโปรเจกต์ Server ไม่สร้างตารางอัตโนมัติ และ `IF NOT EXISTS` ไม่แก้โครงสร้างตารางที่มีอยู่แล้ว ตรวจด้วย `SELECT * FROM public.links LIMIT 5;` ฐานข้อมูลใหม่ควรมีห้าคอลัมน์และศูนย์แถว
 
-**เพิ่มโครงสร้างสมาชิก:** หลังตั้งค่า `server/.env` และสร้างตารางเดิมแล้ว สำรองข้อมูลก่อนรัน `npm.cmd run migrate:local --prefix server` เพื่อเพิ่ม users, sessions และ links.user_id โดยคงลิงก์เดิม คำสั่งนี้ยอมรับเฉพาะ PostgreSQL ที่ host เป็น localhost/127.0.0.1/::1
+**เพิ่มโครงสร้างสมาชิกและการจัดการลิงก์:** หลังตั้งค่า `server/.env` และสร้างตารางเดิมแล้ว สำรองข้อมูลก่อนรัน `npm.cmd run migrate:local --prefix server` เพื่อเพิ่ม users, sessions, links.user_id รวมถึง title, expires_at, deleted_at และขยาย code โดยคงลิงก์เดิม คำสั่งนี้ยอมรับเฉพาะ PostgreSQL ที่ host เป็น localhost/127.0.0.1/::1
 
-บน Hosting ต้องตรวจและรัน [SQL migration](server/migrations/001_auth.sql) ด้วยตนเองหลังสำรอง ก่อน Deploy โค้ดใหม่ ห้ามใช้คำสั่งทดสอบกับฐานข้อมูลออนไลน์
+บน Hosting ต้องตรวจและรัน [SQL migration](server/migrations/001_auth.sql) และ [migration จัดการลิงก์](server/migrations/002_link_management.sql) และ [migration ลบลิงก์](server/migrations/003_soft_delete.sql) ตามลำดับ 001 → 002 → 003ด้วยตนเองหลังสำรอง ก่อน Deploy โค้ดใหม่ ห้ามใช้คำสั่งทดสอบกับฐานข้อมูลออนไลน์
 
-บน Render ใช้ฐานข้อมูลที่บริการสร้างให้ สร้างตาราง links และรัน migration สมาชิก ไม่ต้อง CREATE DATABASE และไม่ต้องย้ายประวัติทดสอบจากเครื่อง
+บน Render ใช้ฐานข้อมูลที่บริการสร้างให้ สร้างตาราง links และรัน migration 001 → 002 → 003 ตามลำดับ ไม่ต้อง CREATE DATABASE และไม่ต้องย้ายประวัติทดสอบจากเครื่อง
 
 ## ตั้งค่าตัวแปรแวดล้อม
 
@@ -136,7 +150,7 @@ npm.cmd run dev --prefix client
 
 เปิด URL ที่ Vite แสดง ปกติคือ http://localhost:5173 เส้นทาง `/api` จะ proxy ไป Backend พอร์ต 3000 ส่วน Redirect ใช้ `PUBLIC_BASE_URL=http://localhost:3000` ไม่ใช่พอร์ต Vite
 
-เมื่อแก้ server/.env ให้รีสตาร์ต Backend หยุดแต่ละ Terminal ด้วย Ctrl+C
+เมื่อแก้ server/.env หรือโค้ด Backend ให้หยุด Terminal ของ Backend ด้วย Ctrl+C แล้วเริ่มใหม่ เพราะคำสั่ง start ใช้ node index.js และไม่โหลดโค้ดใหม่อัตโนมัติ
 
 ## Build และรันแบบ Production ในเครื่อง
 
@@ -153,7 +167,7 @@ npm.cmd start --prefix server
 2. คัดลอกแล้ววางในแท็บใหม่ ตรวจว่า Redirect ไปปลายทางถูกต้อง เบราว์เซอร์อาจปฏิเสธสิทธิ์ Clipboard ได้
 3. เปิด QR ดาวน์โหลด PNG และสแกนด้วยมือถือ
 4. กดรีเฟรชประวัติ ตรวจจำนวนเปิดและเวลาอัปเดต จำนวนเปิดรวมการเปิดซ้ำ ไม่ใช่จำนวนคนหรือยอดขาย
-5. ประวัติของเวอร์ชันล็อกอินเป็นข้อมูลเฉพาะเจ้าของ API หน้าละ 10 รายการ ปุ่มเปลี่ยนหน้าแสดงเมื่อมีอย่างน้อย 11 ลิงก์ในบัญชีเดียวกัน
+5. ประวัติของเวอร์ชันล็อกอินเป็นข้อมูลเฉพาะเจ้าของ API หน้าละ 10 รายการ ปุ่มเปลี่ยนหน้าแสดงเมื่อมีอย่างน้อย 11 รายการที่ตรงคำค้นและยังไม่ถูกลบในบัญชีเดียวกัน
 6. เว็บออนไลน์ต้องสร้างลิงก์โดเมน Render ไม่ใช่ localhost ลองเปิดผ่านเน็ตมือถือเพื่อยืนยันว่าไม่พึ่ง LAN
 
 ลิงก์ localhost เปิดจากเครื่องอื่นไม่ได้ ใช้เว็บออนไลน์สำหรับแชร์ทั่วไป
@@ -163,10 +177,12 @@ npm.cmd start --prefix server
 | Method | Path | หน้าที่ |
 |---|---|---|
 | GET | /api/health | สถานะ API ไม่ได้ตรวจฐานข้อมูลใหม่ทุกครั้ง |
-| POST | /api/links | สร้างลิงก์ รับ JSON เช่น `{"url":"https://example.com"}` |
-| GET | /api/links?page=1 | ประวัติเฉพาะเจ้าของเรียงจากใหม่ไปเก่า ต้อง Login |
-| GET | /r/:code | เพิ่มคลิกและ Redirect ด้วย HTTP 302 |
-| HEAD | /r/:code | ตรวจ Redirect โดยไม่เพิ่มคลิก |
+| POST | /api/links | สร้างลิงก์ รับ JSON เช่น `{"url":"https://example.com","title":"โปรโมชัน","custom_code":"summer-sale","expires_at":null}` |
+| DELETE | /api/links/:id | JSON `{}`; soft delete เฉพาะเจ้าของ ตอบ 204; ไม่คืนรหัสให้ใช้ซ้ำ |
+| PATCH | /api/links/:id | JSON title; แก้ชื่อเฉพาะเจ้าของ ต้อง Login |
+| GET | /api/links?page=1&q=คำค้น | ประวัติเฉพาะเจ้าของเรียงจากใหม่ไปเก่า ต้อง Login |
+| GET | /r/:code | ลิงก์ใช้งานได้เพิ่มคลิกและตอบ 302; หมดอายุ/ถูกลบตอบ 410 ไม่เพิ่มคลิก; ไม่พบตอบ 404 |
+| HEAD | /r/:code | สถานะเหมือน GET แต่ไม่มี response body และไม่เพิ่มคลิก |
 | POST | /api/auth/signup | JSON email, password; สมัครแล้วต้อง Login |
 | POST | /api/auth/login | JSON email, password และ remember แบบ boolean; ส่ง session cookie |
 | GET | /api/auth/me | ตรวจ session ปัจจุบัน ไม่รับรหัสผ่าน |
@@ -174,13 +190,13 @@ npm.cmd start --prefix server
 
 สร้างลิงก์และอ่านประวัติต้องมี session ข้อมูลเจ้าของมาจาก session ฝั่ง Server
 
-คำขอ POST ต้องมี `Content-Type: application/json`, `X-Short-URL-Client: web` และ Origin ที่อนุญาต (PUBLIC_BASE_URL; ระหว่างพัฒนาเพิ่ม localhost:5173 และ 127.0.0.1:5173) Frontend ส่งให้แล้ว ไม่เปิด CORS ข้ามเว็บไซต์
+คำขอ POST, PATCH และ DELETE ต้องมี `Content-Type: application/json`, `X-Short-URL-Client: web` และ Origin ที่อนุญาต (PUBLIC_BASE_URL; ระหว่างพัฒนาเพิ่ม localhost:5173 และ 127.0.0.1:5173) Frontend ส่งให้แล้ว ไม่เปิด CORS ข้ามเว็บไซต์
 
 Login/Sign up จำกัดรวม 15 ครั้งต่อ IP ต่อ 15 นาทีในหน่วยความจำของ Server รีเซ็ตเมื่อ Server restart หากขยายหลาย instance ต้องเปลี่ยนไปใช้ rate-limit store ร่วมกัน ระบบล้าง session หมดอายุเมื่อ Login สำเร็จ และตรวจ expires_at ทุกคำขอ
 
 ## การทดสอบอัตโนมัติ
 
-รัน `npm.cmd test --prefix server` เมื่อ PostgreSQL ในเครื่องทำงานและตั้ง .env แล้ว ชุดทดสอบสร้าง schema ชั่วคราวแยกจาก public ทดสอบ migration, สมัคร/Login, CSRF, แยกเจ้าของ, Logout, session หมดอายุ, rate limit และ Redirect แล้วล้าง schema ทดสอบ ไม่รันทดสอบกับฐานข้อมูล Hosting
+รัน `npm.cmd test --prefix server` เมื่อ PostgreSQL ในเครื่องทำงานและตั้ง .env แล้ว ชุดทดสอบสร้าง schema ชั่วคราวแยกจาก public ทดสอบ migration, สมัคร/Login, CSRF, แยกเจ้าของ, Logout, session หมดอายุ, rate limit, pagination, ชื่อ/แก้ชื่อ/ค้นหา, รหัสกำหนดเอง, วันหมดอายุ, soft delete และ Redirect แล้วล้าง schema ทดสอบ ไม่รันทดสอบกับฐานข้อมูล Hosting
 
 ## Deploy และข้อจำกัด
 

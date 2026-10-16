@@ -295,3 +295,92 @@ button.copied { background: #f1f1f3; border-color: #77777e; color: #242426; }
 .remember-option label { display: flex; align-items: center; gap: 10px; width: fit-content; min-height: 44px; font-size: 14px; font-weight: 400; cursor: pointer; margin: 0; }
 .remember-option input { width: 18px; height: 18px; min-height: 0; padding: 0; flex-shrink: 0; accent-color: var(--accent); }
 .remember-option p { color: var(--muted); font-size: 12px; padding-left: 28px; }
+/* Link management extends the existing charcoal / red company theme. */
+.container { max-width: 1220px; }
+.site-header { border-bottom-color: #e7e7ea; }
+.header-inner { max-width: 1220px; }
+.workspace .link-composer { grid-template-columns: 310px minmax(0, 1fr); border-radius: 16px; }
+.workspace .composer-heading { padding: 36px; justify-content: flex-start; gap: 26px; }
+.workspace .composer-heading h1 { font-size: clamp(28px, 3vw, 34px); line-height: 1.55; }
+.composer-body { padding: 34px 36px; }
+.composer-form-title { margin-bottom: 4px; }
+.composer-description { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+.draft-field { margin-bottom: 20px; }
+.draft-field label, .expiry-field label { font-size: 14px; }
+.optional { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.code-input { position: relative; }
+.code-input > span { position: absolute; left: 17px; top: 17px; color: var(--muted); font: 15px/1.65 system-ui; }
+.workspace .code-input input { padding-left: 44px; }
+.workspace .link-composer form > .help { margin-bottom: 22px; }
+.checkbox-label { display: flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; font-size: 14px; }
+.workspace .checkbox-label input { width: 18px; min-height: 18px; height: 18px; padding: 0; accent-color: var(--accent); flex-shrink: 0; }
+.expiry-option { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 0; border-block: 1px solid var(--line); margin: 4px 0 20px; }
+.workspace .create-submit { width: 100%; justify-content: space-between; }
+.history-search { display: flex; gap: 10px; margin: 24px 0 12px; align-items: center; }
+.search-input { flex: 1; position: relative; min-width: 0; }
+.search-input > svg { position: absolute; left: 16px; top: 18px; color: var(--muted); }
+.search-input input { padding-left: 46px; min-height: 54px; background: white; font-size: 14px; }
+.search-summary { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.link-heading { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.link-title { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.7; }
+.link-status { font-size: 11px; font-weight: 500; color: #46564d; background: #edf3ef; padding: 2px 9px; border-radius: 5px; white-space: nowrap; }
+.link-status.expired { color: #963037; background: #fbeaec; }
+.expiry-date { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.expiry-date.expired { color: #a32328; }
+.row-actions { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+.workspace .edit-link { font-size: 13px; min-height: 40px; border-color: transparent; background: transparent; }
+.workspace .edit-link:hover { background: #f1f1f3; }
+.rename-form { grid-column: 1 / -1; margin: 16px 0 8px; padding-block: 18px; border-block: 1px solid var(--line); }
+.rename-form input { min-height: 48px; font-size: 15px; }
+.rename-actions { display: flex; gap: 8px; margin-top: 12px; }
+.rename-actions button { font-size: 14px; }
+.account-notice { font-size: 13px; color: #505058; margin-bottom: 12px; min-height: 0; }
+.account-notice:empty { margin: 0; }
+.account-enter-active { transition: opacity 380ms var(--ease), transform 450ms var(--ease), filter 380ms var(--ease); }
+.account-leave-active { transition: opacity 160ms ease, transform 200ms ease; pointer-events: none; }
+.account-enter-from { opacity: 0; transform: translateY(18px); filter: blur(3px); }
+.account-leave-to { opacity: 0; transform: translateY(-8px); }
+.auth-layout { box-shadow: 0 16px 48px -32px #20202355; }
+.auth-intro, .workspace .composer-heading { background: #202023; }
+.auth-submit { position: relative; }
+.auth-submit:disabled { opacity: .8; }
+#auth-title:focus, #create-title:focus { outline: none; }
+@media (max-width: 760px) {
+ .workspace .link-composer { grid-template-columns: minmax(0,1fr); }
+ .workspace .composer-heading { padding: 24px; flex-direction: row; gap: 16px; }
+ .workspace .composer-heading h1 { font-size: 25px; }
+ .composer-body { padding: 26px 22px; }
+ .history-search { flex-wrap: wrap; }
+ .search-input { flex-basis: 100%; }
+ .history-search button { flex: 1; }
+ .workspace .row-actions { flex-direction: row; align-items: flex-start; gap: 12px; }
+ .link-heading { gap: 6px 12px; }
+ .optional { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) {
+ *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+ .account-enter-from, .account-leave-to { transform: none; filter: none; }
+}
+.workspace .delete-link { min-height: 40px; font-size: 13px; border-color: transparent; background: transparent; color: #a32328 !important; }
+.workspace .delete-link:hover:not(:disabled) { background: #fbeaec; border-color: transparent; }
+.delete-confirm { grid-column: 1 / -1; margin: 14px 0 8px; padding: 20px 0; border-block: 1px solid var(--line); }
+.delete-confirm h4 { margin: 0 0 4px; font-size: 17px; }
+.delete-confirm p { font-size: 14px; color: var(--muted); max-width: 65ch; }
+.delete-confirm .delete-target { font-weight: 600; color: #242426; overflow-wrap: anywhere; margin-bottom: 6px; }
+.delete-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.delete-actions button { font-size: 14px; }
+#history-title:focus { outline: none; }
+@media(max-width:600px) { .workspace .row-actions { flex-wrap: wrap; gap: 4px 10px; } .delete-actions button { flex: 1; } }
+/* Keep row actions together: copy above, rename and delete paired below. */
+.workspace .row-actions { display: grid; grid-template-columns: auto auto; gap: 8px; align-items: stretch; }
+.workspace .row-actions > .copy-control { grid-column: 1 / -1; align-items: stretch; }
+.workspace .row-actions > .copy-control button { width: 100%; }
+.workspace .row-actions .edit-link,
+.workspace .row-actions .delete-link { min-height: 44px; padding: 8px 12px; border: 1px solid #e3e3e8; border-radius: 8px; background: #fff; gap: 6px; white-space: nowrap; }
+.workspace .row-actions .edit-link:hover:not(:disabled) { background: #f3f3f5; border-color: #bdbdc5; }
+.workspace .row-actions .delete-link:hover:not(:disabled) { background: #fbeaec; border-color: #e5a9ad; }
+.workspace .row-actions .icon { width: 16px; height: 16px; }
+@media (max-width: 760px) {
+ .workspace .row-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+ .workspace .row-actions > .copy-control { align-items: flex-start; }
+}
