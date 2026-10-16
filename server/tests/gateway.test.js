@@ -12,6 +12,7 @@ test('gateway timeout, upstream failure, safe forwarding and configuration', asy
       probes++;
       assert.equal(req.headers.authorization,undefined);
       assert.equal(req.headers.cookie,undefined);
+      if(mode==='stalled-probe' && probes===1) { res.setHeader('Content-Type','application/json');res.flushHeaders();res.write('{');return; }
       if(mode==='warming' && probes===1) { res.statusCode=200;return res.end('<html>Service starting</html>'); }
       if(mode==='never-ready') { res.statusCode=503;return res.end(); }
       res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({status:'ok',service:'redirect'}));
@@ -38,6 +39,11 @@ test('gateway timeout, upstream failure, safe forwarding and configuration', asy
     assert.equal((await call()).status,302);
     assert.equal(probes,2,'Wait past the hosting loading page until the service is ready');
     assert.equal(calls-coldBefore,1,'Readiness polling must send only one click-counting request');
+    mode='stalled-probe';probes=0;process.env.REDIRECT_SERVICE_TIMEOUT_MS='8000';
+    const stalledBefore=calls;
+    assert.equal((await call()).status,302,'A stalled health body must be abandoned before the overall timeout');
+    assert.equal(probes,2);
+    assert.equal(calls-stalledBefore,1,'Retry only health, never the click-counting request');
     mode='never-ready';process.env.REDIRECT_SERVICE_TIMEOUT_MS='100';const notReadyBefore=calls;
     assert.equal((await call()).status,503);
     assert.equal(calls,notReadyBefore,'Never resolve a link before readiness');

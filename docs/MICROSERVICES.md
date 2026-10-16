@@ -86,6 +86,8 @@ Timeout ค่าเริ่มต้น 70 วินาที รองรั�
 
 การแก้บน Branch `fix/redirect-cold-start` (ยังไม่ Deploy): ก่อนส่งคำขอเปิดลิงก์ Gateway ตรวจ `/healthz` ให้ได้ JSON `status=ok, service=redirect` หากโฮสต์ตอบหน้าโหลด/บริการยังไม่พร้อม จะตรวจซ้ำห่างกัน 1 วินาที ภายใน timeout เดียวกันรวมทั้งขั้นเปิดลิงก์ ไม่ส่ง token หรือ cookie ใน health probe และไม่ส่งคำขอที่เพิ่ม clicks ซ้ำ หากบริการยังไม่พร้อมเมื่อหมดเวลา แสดง 503 ตามเดิม ขั้นนี้เพิ่ม health request หนึ่งครั้งในกรณีบริการพร้อมอยู่แล้ว ไม่ได้ทำให้ Free service ตื่นทันทีหรือรับประกันว่าจะไม่เกิด 503
 
+ผลหลัง Deploy การแก้รอบแรก: ผู้ใช้ยังพบ `Redirect request failed: readiness timeout` หลังพัก จึงยังไม่ถือว่าแก้ปัญหาออนไลน์ผ่าน การแก้ถัดมาบน Branch `fix/redirect-readiness-timeout` (ยังไม่ Deploy) จำกัด health probe แต่ละครั้ง 5 วินาทีรวมการอ่าน body โดยยังใช้เวลารวมเดิม แล้วตรวจใหม่หลัง 1 วินาทีเฉพาะ health กรณี connection/body ค้างจึงไม่กินเวลารอทั้งหมดในครั้งเดียว เพิ่ม Logs `Redirect readiness exhausted` ที่มี attempts/elapsedMs/last และ `Redirect readiness recovered` เมื่อฟื้นตัว ไม่บันทึก token/URL ฐานข้อมูล/เนื้อหา response ต้องเก็บ Logs เหตุการณ์จริงหลัง Deploy ก่อนสรุปสาเหตุ
+
 `GET /healthz` ของ Redirect ตรวจการเชื่อม DB ตอบ status/service โดยไม่เผยข้อมูลบัญชี ส่วน `/api/health` เดิมเป็นสถานะบริการหลัก ไม่ได้ตรวจบริการ Redirect ทุกครั้ง
 
 ## Deploy แบบไม่เปลี่ยน URL เก่า
