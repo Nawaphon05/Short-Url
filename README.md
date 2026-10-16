@@ -1,4 +1,4 @@
-﻿# Short URL
+# Short URL
 
 เว็บย่อ URL พร้อมคัดลอกลิงก์ แสดงและดาวน์โหลด QR Code ดูประวัติและจำนวนคลิก รองรับมือถือและคีย์บอร์ด
 
@@ -8,14 +8,14 @@
 
 ## สถานะ Login / Sign up
 
-**Branch `Feature/login` เพิ่มระบบสมาชิกแล้ว แต่ยังไม่ได้ Deploy รอบนี้** URL ออนไลน์ด้านบนอาจยังเป็นเวอร์ชันประวัติรวมจนกว่าจะอัปเดตฐานข้อมูลและ Deploy โค้ดใหม่
+**ออนไลน์ Deploy จาก `main` แล้ว** ผู้ใช้ยืนยันว่ารัน migration บน Render สำเร็จ และทดสอบ QR มือถือกับการแยกสองบัญชีผ่าน วันที่ 16 ตุลาคม 2026
 
 วิธีใช้เวอร์ชันใหม่:
 
 1. กด **Sign up** กรอก Email และ Password ยาว 6–12 ตัวอักษร มีตัวพิมพ์ใหญ่ A–Z อย่างน้อย 1 ตัว พร้อมยืนยันรหัสผ่าน บัญชีเดิมที่ใช้รหัสผ่านยาวกว่านี้ยัง Login ได้ด้วยรหัสเดิม
 2. สมัครสำเร็จแล้ว **Login** ด้วยบัญชีใหม่ ไม่มีการ Login อัตโนมัติหรือยืนยันอีเมล
 3. สร้างลิงก์และดูประวัติส่วนตัว API กรองตามเจ้าของจาก session
-4. หน้า Login เลือก **จำการเข้าสู่ระบบ 7 วัน** ได้ ระบบเก็บ session cookie ไม่เก็บรหัสผ่าน หากไม่เลือก cookie จะเป็นแบบ session และ session ฝั่ง Server หมดอายุใน 12 ชั่วโมง (บางเบราว์เซอร์อาจคืน cookie เมื่อกู้คืนหน้าต่าง) กด **Logout** เพื่อเพิกถอนทันที การบันทึกรหัสผ่านอัตโนมัติใช้ Password Manager ของเบราว์เซอร์
+4. หน้า Login เลือก **จำ Email และการเข้าสู่ระบบ 7 วัน** ได้ ระบบเก็บ session cookie ไม่เก็บรหัสผ่าน หากไม่เลือก cookie จะเป็นแบบ session และ session ฝั่ง Server หมดอายุใน 12 ชั่วโมง (บางเบราว์เซอร์อาจคืน cookie เมื่อกู้คืนหน้าต่าง) กด **Logout** เพื่อเพิกถอนทันที Email ที่เลือกจำเก็บใน localStorage การบันทึกรหัสผ่านใช้ Password Manager ของเบราว์เซอร์ ขึ้นกับการรองรับและการตั้งค่าของผู้ใช้
 5. ผู้รับลิงก์ยังเปิด Redirect หรือสแกน QR ได้โดยไม่ต้อง Login
 
 ลิงก์เก่าไม่มีเจ้าของ จึงไม่แสดงในบัญชีใหม่ แต่ยังเปิด Redirect ได้ ไม่มีการยกประวัติรวมให้บัญชีใดอัตโนมัติ ยังไม่มีระบบลืมรหัสผ่าน ยืนยันอีเมล หรือลบบัญชี
@@ -24,10 +24,12 @@ Session ใช้ HttpOnly cookie (Secure บน production) ไม่เก็�
 
 ## เอกสารออกแบบ
 
-- [ER Diagram และพจนานุกรมข้อมูล](docs/ER.md): แยกฐานข้อมูลปัจจุบันออกจากแบบเพิ่ม users, sessions และเจ้าของลิงก์
-- [Context Diagram และ DFD แตกกระบวนการ](docs/DFD.md): แบบก่อนพัฒนาล็อกอิน พร้อมขอบเขตและเกณฑ์ทดสอบ
+- [ER Diagram และพจนานุกรมข้อมูล](docs/ER.md)
+- [Context Diagram และ DFD Level 0](docs/DFD.md)
+- [Architecture Diagram](docs/ARCHITECTURE.md)
+- [ผลทดสอบและรายการเตรียมส่งงาน](docs/SUBMISSION.md)
 
-เอกสารเก็บแบบก่อนพัฒนาไว้ในประวัติ Git และอัปเดตตามโค้ด Branch ล็อกอินแล้ว ยังไม่ได้ใช้ migration หรือ Deploy บน Render
+เอกสารอธิบายระบบปัจจุบัน แบบก่อนพัฒนาอยู่ในประวัติ Git
 
 ## สิ่งที่ต้องติดตั้ง
 
@@ -46,7 +48,7 @@ npm.cmd ci --prefix server
 npm.cmd ci --prefix client
 ```
 
-Branch เตรียม Deploy คือ `Setup-Deploy` และ Branch งานล็อกอินที่ตรวจครั้งนี้คือ `Feature/login` ชื่อ Branch ต้องตรงตัวพิมพ์ใหญ่เล็ก เลือก Branch ที่ต้องการด้วย `git switch <ชื่อจริง>` ก่อนติดตั้ง dependencies
+ใช้ main ล่าสุดเป็นฐานติดตั้ง หากมี Repository แล้วให้ `git switch main` และ `git pull --ff-only` ก่อนแยก Branch สำหรับงานใหม่
 
 ## สร้างฐานข้อมูล
 
@@ -70,11 +72,11 @@ CREATE TABLE IF NOT EXISTS public.links (
 
 โครงสร้างนี้ตรงกับตารางเดิมที่ใช้ในโปรเจกต์ Server ไม่สร้างตารางอัตโนมัติ และ `IF NOT EXISTS` ไม่แก้โครงสร้างตารางที่มีอยู่แล้ว ตรวจด้วย `SELECT * FROM public.links LIMIT 5;` ฐานข้อมูลใหม่ควรมีห้าคอลัมน์และศูนย์แถว
 
-**สำหรับ Branch ล็อกอิน:** หลังตั้งค่า `server/.env` และสร้างตารางเดิมแล้ว สำรองข้อมูลก่อนรัน `npm.cmd run migrate:local --prefix server` เพื่อเพิ่ม users, sessions และ links.user_id โดยคงลิงก์เดิม คำสั่งนี้ยอมรับเฉพาะ PostgreSQL ที่ host เป็น localhost/127.0.0.1/::1
+**เพิ่มโครงสร้างสมาชิก:** หลังตั้งค่า `server/.env` และสร้างตารางเดิมแล้ว สำรองข้อมูลก่อนรัน `npm.cmd run migrate:local --prefix server` เพื่อเพิ่ม users, sessions และ links.user_id โดยคงลิงก์เดิม คำสั่งนี้ยอมรับเฉพาะ PostgreSQL ที่ host เป็น localhost/127.0.0.1/::1
 
 บน Hosting ต้องตรวจและรัน [SQL migration](server/migrations/001_auth.sql) ด้วยตนเองหลังสำรอง ก่อน Deploy โค้ดใหม่ ห้ามใช้คำสั่งทดสอบกับฐานข้อมูลออนไลน์
 
-บน Render ใช้ฐานข้อมูลที่บริการสร้างให้ รันเฉพาะ CREATE TABLE ไม่ต้อง CREATE DATABASE และไม่ต้องย้ายประวัติทดสอบจากเครื่อง
+บน Render ใช้ฐานข้อมูลที่บริการสร้างให้ สร้างตาราง links และรัน migration สมาชิก ไม่ต้อง CREATE DATABASE และไม่ต้องย้ายประวัติทดสอบจากเครื่อง
 
 ## ตั้งค่าตัวแปรแวดล้อม
 
@@ -165,8 +167,12 @@ npm.cmd start --prefix server
 | GET | /api/links?page=1 | ประวัติเฉพาะเจ้าของเรียงจากใหม่ไปเก่า ต้อง Login |
 | GET | /r/:code | เพิ่มคลิกและ Redirect ด้วย HTTP 302 |
 | HEAD | /r/:code | ตรวจ Redirect โดยไม่เพิ่มคลิก |
+| POST | /api/auth/signup | JSON email, password; สมัครแล้วต้อง Login |
+| POST | /api/auth/login | JSON email, password และ remember แบบ boolean; ส่ง session cookie |
+| GET | /api/auth/me | ตรวจ session ปัจจุบัน ไม่รับรหัสผ่าน |
+| POST | /api/auth/logout | JSON `{}`; เพิกถอน session และล้าง cookie |
 
-API เพิ่มเติม: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout` รับ Email/Password ผ่าน JSON ตามประเภทคำขอ สร้างลิงก์และอ่านประวัติต้องมี session
+สร้างลิงก์และอ่านประวัติต้องมี session ข้อมูลเจ้าของมาจาก session ฝั่ง Server
 
 คำขอ POST ต้องมี `Content-Type: application/json`, `X-Short-URL-Client: web` และ Origin ที่อนุญาต (PUBLIC_BASE_URL; ระหว่างพัฒนาเพิ่ม localhost:5173 และ 127.0.0.1:5173) Frontend ส่งให้แล้ว ไม่เปิด CORS ข้ามเว็บไซต์
 
@@ -178,7 +184,7 @@ Login/Sign up จำกัดรวม 15 ครั้งต่อ IP ต่อ 
 
 ## Deploy และข้อจำกัด
 
-อ่าน [DEPLOY.md](DEPLOY.md) สำหรับคำสั่ง Build/Start และตั้งค่า Render เว็บออนไลน์ Deploy จาก `Setup-Deploy` ตามขั้นตอนที่ผ่านมา การสร้าง Branch ใหม่ไม่เปลี่ยนเว็บออนไลน์จนกว่าจะ Deploy โค้ดนั้น
+อ่าน [DEPLOY.md](DEPLOY.md) สำหรับคำสั่ง Build/Start และตั้งค่า Render เว็บออนไลน์ Deploy จาก `main` การสร้าง Branch ใหม่ไม่เปลี่ยนเว็บออนไลน์จนกว่าจะ Deploy โค้ดนั้น
 
 - Free Web Service อาจพักเมื่อไม่มีผู้ใช้ คำขอแรกจึงช้า
 - ฐานข้อมูล Render ของงานนี้แสดงวันหมดอายุ **15 พฤศจิกายน 2026** ต้องสำรองและวางแผนก่อนถึงวันนั้น

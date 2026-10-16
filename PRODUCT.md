@@ -1,4 +1,4 @@
-﻿# Short URL
+# Short URL
 
 <!-- impeccable:product-schema 1 -->
 
@@ -13,9 +13,9 @@ web
 ## Capabilities and Constraints
 
 - Vue + CSS, Node.js/Express JavaScript และ PostgreSQL คงเทคโนโลยีเดิม
-- Branch Feature/login เพิ่ม Sign up, Login, Logout และประวัติส่วนตัว ลิงก์เก่ายังเปิดได้แต่ไม่มีเจ้าของ จำนวนคลิกรวมการเปิดซ้ำ
-- รอบล็อกอินแก้ Frontend, Backend และมี SQL migration เพิ่ม users/sessions โดยไม่เพิ่ม dependency; ไม่เปลี่ยนฐานข้อมูล Render หรือ Deploy โดยอัตโนมัติ
-- Deploy, Architecture Diagram และ Microservice ทำภายหลัง ไม่ Commit หรือ Push จนกว่าผู้ใช้สั่ง
+- ระบบบน main มี Sign up, Login, Logout และประวัติส่วนตัว ลิงก์เก่ายังเปิดได้แต่ไม่มีเจ้าของ จำนวนคลิกรวมการเปิดซ้ำ
+- Deploy บน Render จาก main แล้ว พร้อม migration สมาชิก ผู้ใช้ยืนยัน QR มือถือและการแยกบัญชีผ่าน
+- Architecture Diagram อยู่ใน docs/ARCHITECTURE.md ระบบเป็น Backend เดียว ไม่ใช่ Microservice ไม่ Commit หรือ Push จนกว่าผู้ใช้สั่ง
 
 ## Brand Commitments
 
@@ -27,4 +27,4 @@ web
 
 ## Open Decisions
 
-ยังไม่ระบุกลุ่มผู้ใช้เฉพาะและ Hosting
+ยังไม่ระบุกลุ่มผู้ใช้เฉพาะ ใช้ Hosting Render ฟังก์ชันเพิ่มเติมรอเลือกกับผู้ใช้
