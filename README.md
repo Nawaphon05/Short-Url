@@ -23,7 +23,7 @@ Merge PR #5 เข้า `main` แล้ว และ Deploy commit `abb74ac` �
 - ค้นหาแบบมีคำค้นเป็นส่วนหนึ่งของข้อมูล ไม่แยกตัวพิมพ์เล็ก/ใหญ่ แต่ช่องว่างยังต้องตรง เช่น `ทดสอบ2` ไม่ตรงกับ `ทดสอบ 2` และค้น `1` จะพบ URL ที่มี `start_radio=1` ด้วย ไม่ค้นจากจำนวนคลิก
 - เลือกรหัส URL ตอนสร้างได้ 3–48 ตัว ใช้ A–Z, a–z, 0–9, - และ _ แยกตัวพิมพ์เล็ก/ใหญ่ รหัสต้องไม่ซ้ำทั้งระบบ ไม่กรอกจะสุ่ม 8 ตัวตามเดิม รหัสแก้ภายหลังไม่ได้
 - เลือกวันหมดอายุในอนาคตตามเวลาเครื่อง Browser ส่งเป็น UTC ให้ Server ไม่กำหนดหมายถึงไม่มีวันหมดอายุ
-- หมดอายุแล้ว GET/HEAD ตอบ HTTP 410 พร้อมหน้าอธิบาย ไม่ Redirect และไม่เพิ่มคลิก ลิงก์เก่ายังทำงานตามเดิม
+- หมดอายุแล้วตัว Redirect ตอบ HTTP 410 พร้อมหน้าอธิบาย ไม่ส่งต่อไปเว็บไซต์ต้นฉบับและไม่เพิ่มคลิก; โหมด browser มี 302 จากโดเมนหลักไปบริการ Redirect ก่อน ลิงก์เก่ายังใช้ได้ตามสถานะของแต่ละรายการ
 - ลบลิงก์พร้อมยืนยันก่อนลบได้เฉพาะเจ้าของ ใช้ soft delete (deleted_at) ซ่อนจากประวัติ/ค้นหา ลิงก์และ QR เดิมตอบ 410 ว่าถูกลบแล้ว ไม่เพิ่มคลิก เก็บ code ไม่ให้ใช้ซ้ำ และไม่มีปุ่มกู้คืน
 - Login/Logout มีการเปลี่ยนหน้าพร้อมแอนิเมชัน รองรับ prefers-reduced-motion
 
@@ -146,6 +146,52 @@ PUBLIC_BASE_URL=http://localhost:3000
 ห้าม Commit `.env`, รหัสผ่าน หรือ connection string จริง ไฟล์ `.env.example` มีเฉพาะตัวอย่างและเก็บใน Git ได้ Backend อ่าน `.env` จากโฟลเดอร์ server ไม่ขึ้นกับโฟลเดอร์ที่สั่งเริ่มระบบ
 
 ## รันระหว่างพัฒนา
+
+### รันสองบริการโหมด browser ทีละขั้น
+
+ทำหลังติดตั้ง dependencies สร้างตาราง links และตั้งค่าฐานข้อมูลตามหัวข้อก่อนหน้าแล้ว ตัวอย่างนี้ใช้ PGDATABASE=short_url, บริการหลักพอร์ต 3000 และ Redirect พอร์ต 3001
+
+1. สร้างไฟล์ Environment ของ Redirect เฉพาะเมื่อยังไม่มี และสุ่ม token หนึ่งครั้ง:
+
+   ```powershell
+   if (-not (Test-Path redirect-service/.env)) { Copy-Item redirect-service/.env.example redirect-service/.env }
+   node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))"
+   ```
+
+2. ใน **server/.env** คง PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD จริงตามที่ตั้งไว้ แล้วเพิ่มหรือแก้ค่าต่อไปนี้ ไม่สร้าง key ซ้ำ:
+
+   ```dotenv
+   PORT=3000
+   PUBLIC_BASE_URL=http://localhost:3000
+   REDIRECT_SERVICE_URL=http://localhost:3001
+   REDIRECT_SERVICE_MODE=browser
+   REDIRECT_SERVICE_TOKEN=replace-with-generated-random-token
+   ```
+
+3. ใน **redirect-service/.env** ตั้ง PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD ให้เป็นฐานข้อมูลเดียวกับ server/.env แล้วตั้ง:
+
+   ```dotenv
+   PORT=3001
+   PUBLIC_BASE_URL=http://localhost:3000
+   REDIRECT_SERVICE_TOKEN=replace-with-generated-random-token
+   ```
+
+   แทนข้อความ token ตัวอย่างด้วย **ผลสุ่มจริงค่าเดียวกัน** ทั้งสองไฟล์ ไม่ใส่ตัวคำสั่งหรือข้อความคำอธิบายแทน token บันทึกทั้งสองไฟล์ PUBLIC_BASE_URL ของ Redirect ต้องชี้กลับบริการหลัก ไม่ใส่ DATABASE_URL ออนไลน์ในรอบทดสอบนี้
+
+4. จากรากโปรเจกต์ รัน migration (หากยังไม่ได้รัน) และ Build:
+
+   ```powershell
+   npm.cmd run migrate:local --prefix server
+   npm.cmd run build --prefix client
+   ```
+
+5. Terminal แรก รัน `npm.cmd start --prefix redirect-service` ต้องเห็น `Redirect service ready` ปล่อยให้ทำงานไว้
+6. เปิด Terminal ใหม่ที่รากโปรเจกต์ รัน `npm.cmd start --prefix server` ต้องเห็น `Connected to PostgreSQL` และ `Redirect mode: remote service` ข้อความ remote ใช้ร่วมทั้ง proxy/browser; HEAD ของลิงก์ในโหมด browser จะได้ Location ไปพอร์ต 3001
+7. เปิด http://localhost:3000 สมัครบัญชีใหม่ Login สร้างลิงก์ เปิดปลายทาง แล้วกลับมารีเฟรชคลิก ฐานข้อมูลใหม่ไม่มีบัญชีจากเว็บออนไลน์ ปิดด้วย Ctrl+C ทั้งสอง Terminal
+
+ถ้าพอร์ตชนให้เปลี่ยน PORT และ URL ที่อ้างพอร์ตนั้นให้ตรงกัน ผู้ใช้ทดลอง clone ใหม่ short-url-final-check ด้วยฐานข้อมูลแยก short_url_final_check และพอร์ต 3070/3071 ผ่าน migration, Build, เริ่มสองบริการ, สร้างลิงก์, เปิด YouTube และแสดงคลิก 1 ตามหลักฐานวันที่ 16 ตุลาคม 2026 ดู [ผลติดตั้งใหม่](docs/SUBMISSION.md#ผลติดตั้งใหม่จาก-clone-ล่าสุด)
+
+### ทางลัดสำหรับลองสอง process
 
 **ทดลองสองบริการ:** หลังสร้างฐานข้อมูล ตั้งค่า `server/.env` และรัน migration แล้ว ให้ Build และเริ่มระบบจากรากโปรเจกต์:
 
