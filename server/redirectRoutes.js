@@ -7,20 +7,35 @@ const page = (res, status, name) => res.status(status).sendFile(path.join(__dirn
 async function waitUntilReady(config, signal) {
   // Hosting can return a loading page before the process is ready. Probe only
   // this read-only endpoint; never retry the request that increments clicks.
+  const started = Date.now();
+  let attempts = 0, last = 'not-started';
   while (!signal.aborted) {
+    attempts++;
     try {
-      const response = await fetch(`${config.origin}/healthz`, { redirect: 'manual', signal });
+      // A stalled connection/body must not consume the entire readiness budget.
+      const probeSignal = AbortSignal.any([signal, AbortSignal.timeout(5000)]);
+      const response = await fetch(`${config.origin}/healthz`, { redirect: 'manual', signal: probeSignal });
+      last = `http-${response.status}`;
       if (response.status === 200 && response.headers.get('content-type')?.includes('application/json')) {
         const health = await response.json();
-        if (health.status === 'ok' && health.service === 'redirect') return;
+        if (health.status === 'ok' && health.service === 'redirect') {
+          if (attempts > 1) console.info('Redirect readiness recovered:', JSON.stringify({ attempts, elapsedMs: Date.now() - started }));
+          return;
+        }
+        last = 'invalid-health';
       } else {
+        if (response.status === 200) last = 'non-json-health';
         await response.body?.cancel();
       }
-    } catch {
-      if (signal.aborted) throw new Error('Redirect readiness timeout');
+    } catch (error) {
+      const code = error.cause?.code;
+      last = signal.aborted ? last : error.name === 'TimeoutError' ? 'probe-timeout' : /^[A-Z0-9_]+$/.test(code || '') ? code : 'probe-error';
+      if (signal.aborted) break;
     }
-    await delay(1000, undefined, { signal });
+    try { await delay(1000, undefined, { signal }); }
+    catch { break; }
   }
+  console.error('Redirect readiness exhausted:', JSON.stringify({ attempts, elapsedMs: Date.now() - started, last }));
   throw new Error('Redirect readiness timeout');
 }
 router.get('/:code', async (req, res) => {
