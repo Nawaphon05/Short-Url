@@ -138,6 +138,8 @@ Render Free รับ private-network inbound ไม่ได้ จึงใช
 
 ## การตรวจรับ
 
+ผู้ใช้ทดลองติดตั้งใหม่จาก clone short-url-final-check กับ PostgreSQL แยก short_url_final_check, พอร์ต 3070/3071 และ browser mode แล้ว ผ่าน migration/Build/รันสองบริการ/สร้างลิงก์/เปิด YouTube/ประวัติแสดงคลิก 1 ดู [หลักฐานติดตั้งใหม่](SUBMISSION.md#ผลติดตั้งใหม่จาก-clone-ล่าสุด) ไม่ใช่การยืนยันว่าทุกกรณีทดสอบซ้ำใน clone นี้
+
 ในเครื่อง: `npm.cmd test --prefix server` ต้องผ่านทั้ง local rollback และ two services พร้อม gateway timeout/failure tests โดยใช้ schema ชั่วคราวใน PostgreSQL localhost เท่านั้น และติดตั้ง dependencies ของ redirect-service ก่อน
 
 ก่อนถือว่าขึ้น Microservice ออนไลน์แล้ว ต้องยืนยัน:
@@ -147,7 +149,7 @@ Render Free รับ private-network inbound ไม่ได้ จึงใช
 - GET เพิ่มหนึ่งคลิก HEAD ไม่เพิ่ม ไม่มีการ retry อัตโนมัติ
 - ลิงก์หมดอายุ/ถูกลบตอบ 410 และคลิกไม่เพิ่ม ไม่พบตอบ 404
 - token ผิดหรือขาดถูกปฏิเสธ และ cookie ผู้ใช้ไม่ถูกส่งต่อ
-- ปิดบริการ Redirect/จำลอง timeout แล้วแสดง 503 แต่สมาชิกและหน้าจัดการลิงก์ยังทำงาน
+- ในโหมด proxy จำลองบริการ Redirect ล่ม/timeout แล้วแสดง 503 แต่หน้าจัดการยังทำงาน; ในโหมด browser โฮสต์อาจแสดงหน้าปลุก/ข้อผิดพลาดของตนก่อนคำขอถึงแอป ไม่ต้องจงใจปิดบริการจริงเพื่อทดสอบ
 - สร้าง ค้นหา แก้ชื่อ ลบ แบ่งหน้า และแยกสองบัญชียังถูกต้อง
 - ตรวจ Desktop/Mobile และทดลองติดตั้งใหม่ตามขั้นตอนสองบริการ
 
