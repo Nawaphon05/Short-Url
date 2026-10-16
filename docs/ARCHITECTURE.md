@@ -4,9 +4,9 @@
 
 เป็นแอป Vue + Express แบบ Backend เดียว (monolith) ร่วมกับ PostgreSQL แยกบริการฐานข้อมูล ไม่อ้างว่าเป็น Microservice การแยก Router และฐานข้อมูลออกจากเว็บไม่เท่ากับแยก Backend เป็น Microservice
 
-Branch feature/link-management เพิ่มชื่อ/ค้นหา/รหัสกำหนดเอง/หมดอายุ/soft delete ในบริการเดิม ไม่เพิ่มบริการใหม่ ยังไม่ได้ Deploy ฟังก์ชันชุดนี้บน Render
+main หลัง Merge PR #5 มีชื่อ/ค้นหา/รหัสกำหนดเอง/หมดอายุ/soft delete ในบริการเดิม ไม่เพิ่มบริการใหม่ ผู้ใช้ยืนยัน migration 002 และ 003 สำเร็จ และ Logs ของ commit abb74ac ขึ้น Your service is live วันที่ 16 ตุลาคม 2026
 
-URL ของเวอร์ชันออนไลน์เดิม: https://short-url-4xil.onrender.com
+URL ออนไลน์: https://short-url-4xil.onrender.com
 
 ```mermaid
 flowchart TB

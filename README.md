@@ -6,9 +6,9 @@
 
 ใช้ Vue + CSS, Node.js + Express (JavaScript) และ PostgreSQL เป็น Backend เดียว ยังไม่ใช่ Microservice
 
-## ฟังก์ชันใหม่ใน Branch feature/link-management
+## การจัดการลิงก์
 
-ส่วนนี้พัฒนาและทดสอบในเครื่อง ยังไม่ได้ Deploy บน Render ไม่รวมอยู่ในผลออนไลน์ที่ยืนยันก่อนหน้านี้
+Merge PR #5 เข้า `main` แล้ว และ Deploy commit `abb74ac` บน Render สำเร็จวันที่ 16 ตุลาคม 2026 ตาม Logs ที่ผู้ใช้ส่ง หลังสำรองและรัน migration 002 → 003 บนฐานข้อมูลปลายทาง ผู้ใช้แสดงหลักฐานออนไลน์ว่าการลบบันทึก deleted_at แล้ว ส่วนผลทดสอบฟังก์ชันอื่นดู [รายการตรวจออนไลน์](docs/SUBMISSION.md#รายการตรวจฟังก์ชันออนไลน์หลัง-deploy-pr-5)
 
 - ตั้งชื่อแสดงผลไม่เกิน 120 ตัวอักษร และแก้ชื่อในประวัติได้โดยไม่เปลี่ยน URL/QR
 - ค้นหาชื่อ URL ต้นฉบับ หรือรหัสลิงก์ ครอบคลุมข้อมูลทุกหน้า เฉพาะบัญชีตนเอง หน้าละ 10 รายการ
@@ -18,7 +18,7 @@
 - ลบลิงก์พร้อมยืนยันก่อนลบได้เฉพาะเจ้าของ ใช้ soft delete (deleted_at) ซ่อนจากประวัติ/ค้นหา ลิงก์และ QR เดิมตอบ 410 ว่าถูกลบแล้ว ไม่เพิ่มคลิก เก็บ code ไม่ให้ใช้ซ้ำ และไม่มีปุ่มกู้คืน
 - Login/Logout มีการเปลี่ยนหน้าพร้อมแอนิเมชัน รองรับ prefers-reduced-motion
 
-ก่อนรันโค้ด Branch นี้: ฐานข้อมูลในเครื่องใช้ `npm.cmd run migrate:local --prefix server` ซึ่งรัน migration 001 → 002 → 003 ตามลำดับ บน Hosting สำรองก่อนแล้วรัน [002_link_management.sql](server/migrations/002_link_management.sql) หลัง 001 แล้วรัน [003_soft_delete.sql](server/migrations/003_soft_delete.sql) ก่อน Deploy โค้ดใหม่ ห้ามรันชุดทดสอบกับฐานข้อมูลออนไลน์
+สำหรับติดตั้งใหม่: ฐานข้อมูลในเครื่องใช้ `npm.cmd run migrate:local --prefix server` ซึ่งรัน migration 001 → 002 → 003 ตามลำดับ บน Hosting สำรองก่อนแล้วรัน [002_link_management.sql](server/migrations/002_link_management.sql) หลัง 001 แล้วรัน [003_soft_delete.sql](server/migrations/003_soft_delete.sql) ก่อน Deploy โค้ดใหม่ ห้ามรันชุดทดสอบกับฐานข้อมูลออนไลน์
 
 ## สถานะ Login / Sign up
 
@@ -62,7 +62,7 @@ npm.cmd ci --prefix server
 npm.cmd ci --prefix client
 ```
 
-เวอร์ชันออนไลน์ปัจจุบันอยู่บน main ส่วนฟังก์ชันใหม่ในเอกสารนี้อยู่บน `feature/link-management` หากต้องการทดลองก่อน Merge ให้ `git switch feature/link-management` ก่อนติดตั้ง dependencies หลัง Merge แล้วจึงใช้ main ล่าสุดเป็นฐานติดตั้ง
+โค้ดที่ Deploy รวมระบบจัดการลิงก์อยู่บน `main` แล้ว หากมี Repository ในเครื่อง ให้สลับ `git switch main` และอัปเดตด้วย `git pull --ff-only` ก่อนเริ่มงานใหม่
 
 ## สร้างฐานข้อมูล
 
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS public.links (
 
 **เพิ่มโครงสร้างสมาชิกและการจัดการลิงก์:** หลังตั้งค่า `server/.env` และสร้างตารางเดิมแล้ว สำรองข้อมูลก่อนรัน `npm.cmd run migrate:local --prefix server` เพื่อเพิ่ม users, sessions, links.user_id รวมถึง title, expires_at, deleted_at และขยาย code โดยคงลิงก์เดิม คำสั่งนี้ยอมรับเฉพาะ PostgreSQL ที่ host เป็น localhost/127.0.0.1/::1
 
-บน Hosting ต้องตรวจและรัน [SQL migration](server/migrations/001_auth.sql) และ [migration จัดการลิงก์](server/migrations/002_link_management.sql) และ [migration ลบลิงก์](server/migrations/003_soft_delete.sql) ตามลำดับ 001 → 002 → 003ด้วยตนเองหลังสำรอง ก่อน Deploy โค้ดใหม่ ห้ามใช้คำสั่งทดสอบกับฐานข้อมูลออนไลน์
+บน Hosting ต้องตรวจและรัน [SQL migration](server/migrations/001_auth.sql) และ [migration จัดการลิงก์](server/migrations/002_link_management.sql) และ [migration ลบลิงก์](server/migrations/003_soft_delete.sql) ตามลำดับ 001 → 002 → 003 ด้วยตนเองหลังสำรอง ก่อน Deploy โค้ดใหม่ ห้ามใช้คำสั่งทดสอบกับฐานข้อมูลออนไลน์
 
 บน Render ใช้ฐานข้อมูลที่บริการสร้างให้ สร้างตาราง links และรัน migration 001 → 002 → 003 ตามลำดับ ไม่ต้อง CREATE DATABASE และไม่ต้องย้ายประวัติทดสอบจากเครื่อง
 

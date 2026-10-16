@@ -1,6 +1,6 @@
 # ER Diagram — Short URL
 
-แบบของ Branch feature/link-management หลัง migration 002 และ 003 (ทดสอบในเครื่อง ยังไม่ได้ Deploy รอบนี้) ระบบสมาชิกเดิมบน main ผ่านการทดสอบออนไลน์ที่ผู้ใช้ยืนยันแล้ว
+โครงสร้างของ main หลัง Merge PR #5 และ migration 001 → 002 → 003 บน Render ผู้ใช้ยืนยัน Query สำเร็จและคอลัมน์จริงแล้ว วันที่ 16 ตุลาคม 2026 Deploy commit abb74ac สำเร็จ และแสดง deleted_at ของลิงก์ที่ลบออนไลน์แล้ว
 
 ## ความสัมพันธ์ฐานข้อมูล
 
