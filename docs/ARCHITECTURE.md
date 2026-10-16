@@ -2,7 +2,7 @@
 
 ## Microservices ที่ Deploy แล้ว
 
-Merge PR #7 เข้า main และ Deploy commit 8644b34 วันที่ 16 ตุลาคม 2026 บริการหลัก https://short-url-4xil.onrender.com ขึ้น Redirect mode: remote service ส่วน https://short-url-redirect.onrender.com ขึ้น Redirect service ready ผู้ใช้ยืนยัน Redirect/QR/นับคลิก หมดอายุ และลบออนไลน์ตาม [SUBMISSION.md](SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7) ข้อที่ยังไม่ตรวจซ้ำคงสถานะรอยืนยัน
+สถานะวันที่ 16 ตุลาคม 2026: main หลัง Merge โหมด browser handoff commit `7f09f71` Deploy ทั้งสองบริการแล้ว บริการหลัก https://short-url-4xil.onrender.com ตั้ง REDIRECT_SERVICE_MODE=browser และตอบ Location ไป https://short-url-redirect.onrender.com/r/:code ตามผล curl จากผู้ใช้ ผู้ใช้ยืนยันเปิดลิงก์ได้หลังพัก 15 นาที ดูรายละเอียดและขอบเขตหลักฐานใน [SUBMISSION.md](SUBMISSION.md#ผลออนไลน์ล่าสุดในโหมด-browser)
 
 ทั้งสองบริการใช้ Node.js/Express JavaScript และ PostgreSQL เดิมร่วมกัน เป็นการแยกบริการที่ยังมี coupling ด้าน schema ไม่ใช่ database-per-service ไม่มี migration ใหม่
 
@@ -18,7 +18,7 @@ flowchart TB
             Gateway["Gateway /r/:code<br/>คงโดเมนและ QR เดิม"]
         end
         subgraph Service["Web Service 2 — Redirect"]
-            Resolve["/internal/links/:code<br/>ตรวจ token / หมดอายุ / ถูกลบ<br/>GET เพิ่ม clicks, HEAD ไม่เพิ่ม"]
+            Resolve["Public /r/:code<br/>ตรวจหมดอายุ / ถูกลบ<br/>GET เพิ่ม clicks, HEAD ไม่เพิ่ม"]
         end
         DB[("PostgreSQL ร่วมกัน<br/>users / sessions / links")]
     end
@@ -30,10 +30,10 @@ flowchart TB
     B <-->|"JSON และ session cookie"| API
     API <-->|"SQL สมาชิกและข้อมูลลิงก์"| DB
     V -->|"GET / HEAD URL เดิม"| Gateway
-    Gateway -->|"HTTPS และ service token<br/>ไม่ส่ง cookie ผู้ใช้ / ไม่ retry"| Resolve
-    Resolve -->|"302 Location / 404 / 410 / 503"| Gateway
+    Gateway -->|"302 Location ไปโดเมน Redirect<br/>ไม่เพิ่มคลิก / ไม่มี token ใน URL"| V
+    V -->|"HTTPS GET หรือ HEAD<br/>โฮสต์แสดงหน้าปลุกเมื่อบริการพัก"| Resolve
+    Resolve -->|"302 ไปปลายทาง หรือหน้า 404 / 410 / 503"| V
     Resolve <-->|"SQL ตรวจสถานะ<br/>และ UPDATE clicks"| DB
-    Gateway -->|"302 หรือหน้าสถานะ 404 / 410 / 503"| V
     V -->|"เฉพาะ 302: Browser เปิดปลายทาง"| Target
     Admin <-->|"External connection / SSL"| DB
 ```
@@ -43,29 +43,29 @@ flowchart TB
 | ส่วน | หน้าที่ |
 |---|---|
 | server | เสิร์ฟ Vue, สมาชิก/session, จัดการลิงก์ และ Gateway ของโดเมนเดิม |
-| redirect-service | ตรวจ service token, ค้น/ตรวจลิงก์ และเพิ่ม clicks ไม่ให้บริการสมาชิก |
+| redirect-service | public /r ตรวจลิงก์และเพิ่ม clicks; /internal ตรวจ token สำหรับโหมด proxy; ไม่ให้บริการสมาชิก |
 | PostgreSQL | schema เดิม ER ไม่เปลี่ยน บริการหลักแก้ข้อมูลลิงก์ ส่วน Redirect เพิ่มเฉพาะ clicks |
-| Browser | ใช้โดเมนเดิม ไม่ได้รับ service token หรือ DATABASE_URL; QR สร้างบน Browser |
+| Browser | เริ่มจาก URL เดิม แล้วเปิดโดเมน Redirect และเว็บไซต์ปลายทาง ไม่ได้รับ service token หรือ DATABASE_URL; QR สร้างบน Browser |
 | GitHub | เก็บ source ไม่อยู่ในเส้นทางข้อมูลระหว่างเปิดลิงก์ |
 
 ## การสื่อสารและความล้มเหลว
 
 - Gateway ใช้ origin จาก Environment ที่ผู้ดูแลกำหนด ไม่รับ URL บริการจากผู้ใช้
-- ใช้ service token ร่วมผ่าน HTTPS ฝั่ง Server และตรวจแบบ constant-time จาก digest ไม่ส่ง credentials นี้ไป Browser หรือ Location
-- ไม่ตาม redirect ของ upstream และไม่ retry อัตโนมัติ timeout ค่าเริ่มต้น 70 วินาที
-- Branch fix/redirect-cold-start ที่ยังไม่ Deploy เพิ่มการรอ `/healthz` แบบ read-only ภายใน timeout ก่อนส่งคำขอเปิดลิงก์หนึ่งครั้ง การตรวจ health ซ้ำไม่เพิ่ม clicks ส่วนคำขอเปิดลิงก์ยังไม่ retry
-- เมื่อบริการ Redirect ล่มหรือ token ผิด เปิดลิงก์แสดงหน้า 503 ธีมเดียวกัน สมาชิกและการจัดการลิงก์ยังแยกทำงานได้หากฐานข้อมูลพร้อม
+- โหมด browser ปัจจุบันส่ง 302 ไป public /r ของ Redirect โดยไม่เรียก health หรือส่งคำขอเพิ่มคลิกจาก Gateway การนับอยู่ที่ Redirect เท่านั้น
+- โหมด proxy ยังคงเลือกใช้ได้ด้วย REDIRECT_SERVICE_MODE=proxy: ตรวจ health และส่ง service token ผ่าน HTTPS ไป /internal ตรวจ digest แบบ constant-time ไม่ตาม Location หรือ retry คำขอเปิดลิงก์ timeout รวมค่าเริ่มต้น 70 วินาที
+- ในโหมด browser ถ้า Redirect พัก Browser จะผ่านหน้าปลุกของโฮสต์ ถ้าโฮสต์เสียอาจเห็นหน้าผิดพลาดจากโฮสต์; เมื่อคำขอถึง Express แล้วจึงใช้หน้าสถานะของแอป สมาชิกและการจัดการลิงก์แยกทำงานได้หากฐานข้อมูลพร้อม
+- HEAD ที่โดเมนหลักตอบ 302 ไปบริการ Redirect เสมอสำหรับรหัสรูปแบบถูกต้อง ต้องตาม Location ไป HEAD อีกทอดจึงทราบสถานะจริง โดยทั้งสองทอดไม่เพิ่มคลิก
 - ไม่มี REDIRECT_SERVICE_URL: server เลือก localRedirectRoutes เพื่อรองรับ rollback โหมดนี้ยังเป็น monolith ไม่ใช่การ Deploy สองบริการ
 - ไม่ใช้ fallback SQL หลัง remote timeout เพราะอาจนับคลิกซ้ำ
 
 ## ข้อจำกัด
 
-ทางเลือกใหม่ใน Branch fix/browser-redirect-handoff (ยังไม่เปิดออนไลน์): เมื่อ REDIRECT_SERVICE_MODE=browser Gateway ตอบ 302 ให้ Browser เปิด public `/r/:code` ของ Redirect service โดยตรง แทนการเรียกจาก Server เพื่อให้ Browser ผ่านหน้าปลุกบริการของโฮสต์ จากนั้น Redirect จึงตอบ 302 ไปปลายทางหรือหน้าสถานะ ใช้ DB เดิมและนับคลิกที่ Redirect เท่านั้น ไม่มี token ใน Browser ส่วนภาพด้านบนยังแสดงโหมด proxy ที่ Deploy อยู่ ดูลำดับเปิดใช้และความหมาย HEAD สองทอดใน [MICROSERVICES.md](MICROSERVICES.md#ทางเลือก-browser-handoff-สำหรับการปลุกบริการ)
+ภาพด้านบนแสดงโหมด browser ที่ใช้งานจริง ดูค่าตั้งและการย้อนกลับ proxy ใน [MICROSERVICES.md](MICROSERVICES.md#ทางเลือก-browser-handoff-สำหรับการปลุกบริการ) ลิงก์สั้นเดิมคงอยู่ แต่มีการเปลี่ยนโดเมนระหว่างเปิดเพิ่มหนึ่งทอด
 
 ใช้ PostgreSQL ร่วมกัน จึงยังต้องประสาน schema, สิทธิ์ และการสำรองร่วมกัน ไม่มี distributed transaction, service discovery, queue หรือ exactly-once event analytics การเพิ่ม clicks เป็น atomic SQL ต่อคำขอที่ประมวลผลได้
 
-Render Free ทั้งสอง Web Services รับคำขอผ่าน HTTPS สาธารณะ (Free ไม่รับ private network inbound) token จึงจำเป็น โควตาชั่วโมงรวมและ cold start ต้องตรวจใน Dashboard ดู [ข้อจำกัด Render](https://render.com/docs/free)
+Render Free ทั้งสอง Web Services รับคำขอผ่าน HTTPS สาธารณะ (Free ไม่รับ private network inbound) public /r ไม่ต้องใช้ token เช่นเดียวกับลิงก์สาธารณะเดิม ส่วน /internal ยังคงต้องใช้ token โควตาชั่วโมงรวมและ cold start ต้องตรวจใน Dashboard ดู [ข้อจำกัด Render](https://render.com/docs/free)
 
 ## วิธีอธิบาย
 
-ผู้ใช้ยังเปิด URL เดิม บริการหลักส่งคำขอ GET/HEAD ให้บริการ Redirect ที่ Deploy แยกกัน โดยไม่ส่ง cookie ผู้ใช้ Redirect ตรวจสถานะและเพิ่มคลิกเฉพาะ GET ที่ใช้ได้ แล้วคืน Location ให้ Gateway ส่ง 302 สู่ Browser Browser จึงเปิดเว็บไซต์ปลายทาง ส่วนบริการหลักยังดูแลบัญชีและข้อมูลลิงก์เอง
+ผู้ใช้เปิด URL เดิม บริการหลักส่ง 302 ให้ Browser เปิดบริการ Redirect ที่ Deploy แยกกัน Redirect ตรวจสถานะ เพิ่มคลิกเฉพาะ GET ที่ใช้ได้ แล้วส่ง 302 ให้ Browser เปิดเว็บไซต์ปลายทาง ส่วนบริการหลักยังดูแลบัญชีและข้อมูลลิงก์เอง

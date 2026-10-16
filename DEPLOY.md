@@ -8,6 +8,8 @@ PR #7 Merge เข้า main แล้ว Deploy commit 8644b34 วันที
 
 ## สถานะ Deploy ล่าสุด
 
+โหมดออนไลน์ล่าสุดใช้ commit `7f09f71` และ `REDIRECT_SERVICE_MODE=browser` ที่บริการหลัก Redirect service ตั้ง `PUBLIC_BASE_URL=https://short-url-4xil.onrender.com` แล้ว หลักฐาน curl ของบริการหลักตอบ Location ไปโดเมน Redirect และผู้ใช้ยืนยันเปิดหลังพัก 15 นาทีได้ ดู [ผลรอบล่าสุด](docs/SUBMISSION.md#ผลออนไลน์ล่าสุดในโหมด-browser) ข้อมูล PR #5 ด้านล่างเป็นประวัติ migration ไม่ใช่ commit ล่าสุด
+
 วันที่ 16 ตุลาคม 2026 ผู้ใช้สำรองฐานข้อมูล แล้วรัน [002_link_management.sql](server/migrations/002_link_management.sql) และ [003_soft_delete.sql](server/migrations/003_soft_delete.sql) บน Render สำเร็จ ยืนยันคอลัมน์ title, expires_at และ deleted_at ใน public.links แล้ว
 
 PR #5 Merge เข้า main ที่ commit `abb74ac` รอบ Auto Deploy ก่อน migration ไม่สำเร็จเพราะไม่มี title หลัง migration ผู้ใช้สั่ง Manual Deploy ใหม่ และส่ง Logs ที่ขึ้น Connected to PostgreSQL และ Your service is live ยืนยัน Deploy สำเร็จแล้ว ไม่ต้องรัน migration ซ้ำเพียงเพื่ออัปเดตเอกสาร
@@ -17,6 +19,15 @@ PR #5 Merge เข้า main ที่ commit `abb74ac` รอบ Auto Deploy �
 สำหรับฐานข้อมูลใหม่ ให้สร้าง links และรัน 001 → 002 → 003 ตามลำดับก่อนเริ่ม Server การ Build ไม่รัน migration อัตโนมัติ สำหรับการเปลี่ยน schema ครั้งต่อไปให้สำรองและใช้ migration ที่เพิ่มใหม่ก่อน Deploy โค้ดที่ต้องใช้คอลัมน์นั้น
 
 ## Web Service
+
+ค่าที่เปิดใช้งานปัจจุบัน:
+
+| บริการ | ค่าที่เกี่ยวข้องกับเส้นทาง browser |
+|---|---|
+| Short-Url | REDIRECT_SERVICE_URL=https://short-url-redirect.onrender.com; REDIRECT_SERVICE_MODE=browser; PUBLIC_BASE_URL=https://short-url-4xil.onrender.com |
+| short-url-redirect | PUBLIC_BASE_URL=https://short-url-4xil.onrender.com; Root Directory=redirect-service; Build=npm ci; Start=npm start; Health=/healthz |
+
+ทั้งสองบริการคง DATABASE_URL และ REDIRECT_SERVICE_TOKEN เดิมไว้ ค่า token ใช้กับ /internal สำหรับโหมด proxy ไม่มี token ใน URL ของ Browser ต้อง Deploy public /r ของ Redirect ให้พร้อมก่อนเปิด browser ที่บริการหลัก
 
 - Repository: Nawaphon05/Short-Url; Branch: `main`; Root Directory: ราก Repository
 - Build Command: `npm ci --prefix server && npm ci --prefix client --include=dev && npm run build --prefix client`

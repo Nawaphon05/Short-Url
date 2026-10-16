@@ -10,7 +10,7 @@
 
 Merge PR #7 เข้า `main` และ Deploy commit `8644b34` บน Render วันที่ 16 ตุลาคม 2026 แล้ว บริการหลักใช้ `Redirect mode: remote service` เรียก https://short-url-redirect.onrender.com ผ่าน Gateway ที่รักษา URL และ QR เดิม ผู้ใช้ยืนยันสร้างลิงก์ เปิดปลายทาง สแกน QR มือถือ คลิกเพิ่ม หมดอายุแล้วคลิกไม่เพิ่ม และลบแล้วหายจากประวัติ/ค้นหา พร้อมหน้าถูกลบ ดู [ผลออนไลน์และข้อที่ยังรอยืนยัน](docs/SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7) และ [Architecture](docs/ARCHITECTURE.md)
 
-เคยพบ 503 ชั่วคราวแล้วกลับมาใช้งานได้ สาเหตุยังไม่ยืนยันจาก Logs ไม่ถือว่าตรวจความเสถียรครบแล้ว อ่าน [วิธีติดตั้ง รัน Deploy และ rollback](docs/MICROSERVICES.md)
+สถานะล่าสุด: Deploy commit `7f09f71` และเปิด `REDIRECT_SERVICE_MODE=browser` แล้ว URL/QR เดิมเริ่มที่บริการหลัก จากนั้น Browser ตาม 302 ไป public `/r/:code` ของ Redirect service ก่อนเปิดปลายทาง ไม่มี token ใน Browser ผู้ใช้ยืนยันเปิดได้หลังพัก 15 นาทีในรอบทดสอบนี้ ไม่รับประกันว่าโฮสต์ฟรีจะไม่ขัดข้องอีก ดู [ผลล่าสุด](docs/SUBMISSION.md#ผลออนไลน์ล่าสุดในโหมด-browser) และ [วิธีติดตั้ง รัน Deploy และ rollback](docs/MICROSERVICES.md)
 
 ต้องติดตั้ง dependencies ใน redirect-service เพิ่มและรันสอง process ที่ใช้ token เดียวกัน หากยังไม่ตั้ง REDIRECT_SERVICE_URL ขั้นตอนเดิมด้านล่างจะรัน local rollback mode (monolith) ได้ตามเดิม ไม่ถือว่าทดสอบ Microservice ครบจากโหมดนี้
 
@@ -131,6 +131,9 @@ PUBLIC_BASE_URL=http://localhost:3000
 | PORT | พอร์ต Express ค่าเริ่มต้น 3000 บน Hosting ใช้ค่าที่ผู้ให้บริการกำหนด |
 | PUBLIC_BASE_URL | URL หลักสำหรับสร้างลิงก์ ต้องเป็น HTTP(S) origin ไม่มี path, query หรือ username/password |
 | NODE_ENV | ตั้ง production บน Hosting |
+| REDIRECT_SERVICE_URL | origin ของ Redirect service; ไม่ตั้งจะเป็น monolith สำหรับ rollback |
+| REDIRECT_SERVICE_MODE | browser สำหรับโหมดออนไลน์ปัจจุบัน; proxy เป็นค่าเริ่มต้นเมื่อไม่ตั้งและมี URL |
+| REDIRECT_SERVICE_TOKEN | token ร่วมของทั้งสองบริการสำหรับ /internal ห้ามใส่ใน Browser หรือ Git |
 
 บน Render ตั้งในหน้า Environment ของ Web Service:
 
@@ -204,8 +207,8 @@ npm.cmd start --prefix server
 | DELETE | /api/links/:id | JSON `{}`; soft delete เฉพาะเจ้าของ ตอบ 204; ไม่คืนรหัสให้ใช้ซ้ำ |
 | PATCH | /api/links/:id | JSON title; แก้ชื่อเฉพาะเจ้าของ ต้อง Login |
 | GET | /api/links?page=1&q=คำค้น | ประวัติเฉพาะเจ้าของเรียงจากใหม่ไปเก่า ต้อง Login |
-| GET | /r/:code | ลิงก์ใช้งานได้เพิ่มคลิกและตอบ 302; หมดอายุ/ถูกลบตอบ 410 ไม่เพิ่มคลิก; ไม่พบตอบ 404 |
-| HEAD | /r/:code | สถานะเหมือน GET แต่ไม่มี response body และไม่เพิ่มคลิก |
+| GET | /r/:code | โหมด browser: บริการหลักตอบ 302 ไป Redirect service; ที่นั่นจึงเพิ่มคลิกแล้ว 302 ไปปลายทาง หรือ 404/410 ตามสถานะ |
+| HEAD | /r/:code | ไม่เพิ่มคลิก; โหมด browser ต้องตาม Location ไป HEAD ที่ Redirect service เพื่อดูสถานะลิงก์จริง |
 | POST | /api/auth/signup | JSON email, password; สมัครแล้วต้อง Login |
 | POST | /api/auth/login | JSON email, password และ remember แบบ boolean; ส่ง session cookie |
 | GET | /api/auth/me | ตรวจ session ปัจจุบัน ไม่รับรหัสผ่าน |
