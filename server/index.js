@@ -4,7 +4,9 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const pool = require('./db');
 const linkRoutes = require('./linkRoutes');
-const redirectRoutes = require('./redirectRoutes');
+const { getRedirectConfig } = require('./redirectConfig');
+const redirectConfig = getRedirectConfig();
+const redirectRoutes = require(redirectConfig ? './redirectRoutes' : './localRedirectRoutes');
 const app = express();
 const auth = require('./auth');
 const PORT = process.env.PORT || 3000;
@@ -44,9 +46,14 @@ async function startServer() {
     await pool.query('SELECT user_id, title, expires_at, deleted_at FROM links LIMIT 1');
 
     console.log('Connected to PostgreSQL');
+    console.log(`Redirect mode: ${redirectConfig ? 'remote service' : 'local rollback mode'}`);
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
+    });
+    server.on('error', async error => {
+      console.error('Cannot listen:', error.code || 'internal');
+      await pool.end(); process.exitCode = 1;
     });
   } catch (error) {
     console.error('Cannot start server:', error.message);

@@ -4,7 +4,13 @@
 
 **เว็บที่ Deploy แล้ว:** https://short-url-4xil.onrender.com
 
-ใช้ Vue + CSS, Node.js + Express (JavaScript) และ PostgreSQL เป็น Backend เดียว ยังไม่ใช่ Microservice
+ใช้ Vue + CSS, Node.js + Express (JavaScript) และ PostgreSQL เวอร์ชันออนไลน์ที่ยืนยันแล้วเป็น Backend เดียว ส่วน Branch นี้รองรับการแยก Redirect service
+
+## โหมด Microservices (Branch พัฒนา)
+
+`feature/microservices` แยกบริการ Redirect ที่รัน/Deploy อิสระ พร้อม Gateway รักษา URL และ QR เดิม โหมดสองบริการทดสอบในเครื่อง ยังไม่ได้ Deploy บน Render อ่าน [วิธีติดตั้ง รัน Deploy และ rollback](docs/MICROSERVICES.md) และ [Architecture](docs/ARCHITECTURE.md) ก่อนใช้โหมดนี้
+
+ต้องติดตั้ง dependencies ใน redirect-service เพิ่มและรันสอง process ที่ใช้ token เดียวกัน หากยังไม่ตั้ง REDIRECT_SERVICE_URL ขั้นตอนเดิมด้านล่างจะรัน local rollback mode (monolith) ได้ตามเดิม ไม่ถือว่าทดสอบ Microservice ครบจากโหมดนี้
 
 ## การจัดการลิงก์
 
@@ -12,6 +18,7 @@ Merge PR #5 เข้า `main` แล้ว และ Deploy commit `abb74ac` �
 
 - ตั้งชื่อแสดงผลไม่เกิน 120 ตัวอักษร และแก้ชื่อในประวัติได้โดยไม่เปลี่ยน URL/QR
 - ค้นหาชื่อ URL ต้นฉบับ หรือรหัสลิงก์ ครอบคลุมข้อมูลทุกหน้า เฉพาะบัญชีตนเอง หน้าละ 10 รายการ
+- ค้นหาแบบมีคำค้นเป็นส่วนหนึ่งของข้อมูล ไม่แยกตัวพิมพ์เล็ก/ใหญ่ แต่ช่องว่างยังต้องตรง เช่น `ทดสอบ2` ไม่ตรงกับ `ทดสอบ 2` และค้น `1` จะพบ URL ที่มี `start_radio=1` ด้วย ไม่ค้นจากจำนวนคลิก
 - เลือกรหัส URL ตอนสร้างได้ 3–48 ตัว ใช้ A–Z, a–z, 0–9, - และ _ แยกตัวพิมพ์เล็ก/ใหญ่ รหัสต้องไม่ซ้ำทั้งระบบ ไม่กรอกจะสุ่ม 8 ตัวตามเดิม รหัสแก้ภายหลังไม่ได้
 - เลือกวันหมดอายุในอนาคตตามเวลาเครื่อง Browser ส่งเป็น UTC ให้ Server ไม่กำหนดหมายถึงไม่มีวันหมดอายุ
 - หมดอายุแล้ว GET/HEAD ตอบ HTTP 410 พร้อมหน้าอธิบาย ไม่ Redirect และไม่เพิ่มคลิก ลิงก์เก่ายังทำงานตามเดิม
@@ -41,6 +48,7 @@ Session ใช้ HttpOnly cookie (Secure บน production) ไม่เก็�
 - [ER Diagram และพจนานุกรมข้อมูล](docs/ER.md)
 - [Context Diagram และ DFD Level 0](docs/DFD.md)
 - [Architecture Diagram](docs/ARCHITECTURE.md)
+- [คู่มือ Microservices](docs/MICROSERVICES.md)
 - [ผลทดสอบและรายการเตรียมส่งงาน](docs/SUBMISSION.md)
 
 เอกสารอธิบายระบบปัจจุบัน แบบก่อนพัฒนาอยู่ในประวัติ Git
@@ -58,11 +66,13 @@ Session ใช้ HttpOnly cookie (Secure บน production) ไม่เก็�
 ```powershell
 git clone https://github.com/Nawaphon05/Short-Url.git
 cd Short-Url
+git switch feature/microservices
 npm.cmd ci --prefix server
 npm.cmd ci --prefix client
+npm.cmd ci --prefix redirect-service
 ```
 
-โค้ดที่ Deploy รวมระบบจัดการลิงก์อยู่บน `main` แล้ว หากมี Repository ในเครื่อง ให้สลับ `git switch main` และอัปเดตด้วย `git pull --ff-only` ก่อนเริ่มงานใหม่
+ขั้นตอนนี้ใช้ Branch `feature/microservices` ซึ่งต้อง Push ก่อนผู้ตรวจจะติดตั้งจาก GitHub ได้ ส่วน `main` เป็นเวอร์ชันออนไลน์เดิม หากต้องการตรวจเวอร์ชันนั้นให้ข้ามคำสั่งสลับ Branch และไม่ต้องติดตั้ง redirect-service
 
 ## สร้างฐานข้อมูล
 
@@ -132,6 +142,17 @@ PUBLIC_BASE_URL=http://localhost:3000
 
 ## รันระหว่างพัฒนา
 
+**ทดลองสองบริการ:** หลังสร้างฐานข้อมูล ตั้งค่า `server/.env` และรัน migration แล้ว ให้ Build และเริ่มระบบจากรากโปรเจกต์:
+
+```powershell
+npm.cmd run build --prefix client
+npm.cmd run dev:services --prefix server
+```
+
+เปิด http://localhost:3062 บริการ Redirect อยู่ที่พอร์ต 3063 คำสั่งนี้ใช้เฉพาะ PostgreSQL localhost และสร้าง token ชั่วคราวให้ทั้งสองบริการ กด Ctrl+C เพื่อหยุด ดูการตั้งค่าแต่ละบริการและ Deploy ใน [คู่มือ Microservices](docs/MICROSERVICES.md)
+
+**พัฒนา UI ด้วย Vite:** วิธีด้านล่างรัน Backend พอร์ต 3000 หากไม่ตั้ง `REDIRECT_SERVICE_URL` จะเป็น monolith สำหรับ rollback หากต้องการสองบริการพร้อม Vite ให้เริ่ม Redirect และตั้งค่า Backend ตามคู่มือ Microservices ด้วยตนเอง
+
 เปิด PostgreSQL ก่อน เปิด Terminal สองอันจากรากโปรเจกต์
 
 **Terminal 1 — Backend:**
@@ -196,7 +217,7 @@ Login/Sign up จำกัดรวม 15 ครั้งต่อ IP ต่อ 
 
 ## การทดสอบอัตโนมัติ
 
-รัน `npm.cmd test --prefix server` เมื่อ PostgreSQL ในเครื่องทำงานและตั้ง .env แล้ว ชุดทดสอบสร้าง schema ชั่วคราวแยกจาก public ทดสอบ migration, สมัคร/Login, CSRF, แยกเจ้าของ, Logout, session หมดอายุ, rate limit, pagination, ชื่อ/แก้ชื่อ/ค้นหา, รหัสกำหนดเอง, วันหมดอายุ, soft delete และ Redirect แล้วล้าง schema ทดสอบ ไม่รันทดสอบกับฐานข้อมูล Hosting
+ติดตั้ง dependencies ของ redirect-service ด้วยก่อนทดสอบ เพราะชุดทดสอบจะรันสองบริการจริงควบคู่กับโหมด rollback จากนั้นรัน `npm.cmd test --prefix server` เมื่อ PostgreSQL ในเครื่องทำงานและตั้ง .env แล้ว ชุดทดสอบสร้าง schema ชั่วคราวแยกจาก public ทดสอบ migration, สมัคร/Login, CSRF, แยกเจ้าของ, Logout, session หมดอายุ, rate limit, pagination, ชื่อ/แก้ชื่อ/ค้นหา, รหัสกำหนดเอง, วันหมดอายุ, soft delete และ Redirect แล้วล้าง schema ทดสอบ ไม่รันทดสอบกับฐานข้อมูล Hosting
 
 ## Deploy และข้อจำกัด
 
@@ -213,10 +234,15 @@ Login/Sign up จำกัดรวม 15 ครั้งต่อ IP ต่อ 
 ```text
 client/src/App.vue                 ฟอร์มและผลลัพธ์
 client/src/components/             ประวัติ คัดลอก และ QR
-client/src/style.css               ธีมและอนิเมชัน
+client/src/style.css               รูปแบบพื้นฐานและอนิเมชัน
+client/src/redesign.css            ธีมแดง–ชาร์โคลล่าสุด
 server/index.js                    เริ่ม Server และเสิร์ฟ Vue build
-server/linkRoutes.js               สร้างลิงก์และอ่านประวัติ
-server/redirectRoutes.js           Redirect และนับคลิก
+server/linkRoutes.js               สร้าง ค้นหา แก้ชื่อ และ soft delete
+server/redirectRoutes.js           Gateway ไปบริการ Redirect
+server/localRedirectRoutes.js      Redirect ในโหมด monolith สำหรับ rollback
+server/redirectConfig.js           ตรวจค่าการเชื่อมต่อระหว่างบริการ
+server/devServices.js              เริ่มสองบริการสำหรับทดสอบในเครื่อง
+redirect-service/index.js          ตรวจสถานะลิงก์และนับคลิก แยก process
 server/db.js                       เชื่อม PostgreSQL
 server/.env.example                ตัวอย่างตั้งค่า ไม่มีค่าลับจริง
 ```

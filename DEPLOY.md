@@ -2,6 +2,10 @@
 
 เว็บ https://short-url-4xil.onrender.com Deploy จาก `main` แล้ว ผู้ใช้ยืนยัน migration สำเร็จ และทดสอบ QR มือถือกับการแยกบัญชีผ่าน วันที่ 16 ตุลาคม 2026
 
+## การแยกบริการรอบใหม่
+
+Branch feature/microservices ยังไม่ได้ Deploy เว็บออนไลน์ที่ระบุด้านล่างเป็นเวอร์ชัน monolith ที่ยืนยันแล้ว ใช้ [คู่มือ Microservices](docs/MICROSERVICES.md) สำหรับสร้างบริการ Redirect แยก ตั้ง token และค่อยเปิด remote mode หลังบริการใหม่พร้อม ไม่มี SQL migration ใหม่ และยังไม่ได้เปลี่ยนค่า Environment/บริการจริงในรอบพัฒนา
+
 ## สถานะ Deploy ล่าสุด
 
 วันที่ 16 ตุลาคม 2026 ผู้ใช้สำรองฐานข้อมูล แล้วรัน [002_link_management.sql](server/migrations/002_link_management.sql) และ [003_soft_delete.sql](server/migrations/003_soft_delete.sql) บน Render สำเร็จ ยืนยันคอลัมน์ title, expires_at และ deleted_at ใน public.links แล้ว

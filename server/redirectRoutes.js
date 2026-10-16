@@ -1,23 +1,42 @@
 const express = require('express');
-const pool = require('./db');
 const path = require('node:path');
+const { getRedirectConfig } = require('./redirectConfig');
 const router = express.Router();
+const page = (res, status, name) => res.status(status).sendFile(path.join(__dirname, `pages/${name}.html`));
 router.get('/:code', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const { code } = req.params;
-  if (!/^[A-Za-z0-9_-]{3,48}$/.test(code)) return res.status(404).sendFile(path.join(__dirname, 'pages/not-found.html'));
+  if (!/^[A-Za-z0-9_-]{3,48}$/.test(code)) return page(res,404,'not-found');
+  const config = getRedirectConfig();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.timeout);
+  const disconnect = () => { if (!res.writableEnded) controller.abort(); };
+  res.on('close', disconnect);
   try {
-    // Eligibility and increment are one statement: an expired link never gains a click.
-    const result = req.method === 'HEAD'
-      ? await pool.query('SELECT original_url FROM links WHERE code=$1 AND deleted_at IS NULL AND (expires_at IS NULL OR expires_at>statement_timestamp())', [code])
-      : await pool.query(`UPDATE links SET clicks=clicks+1 WHERE code=$1 AND deleted_at IS NULL AND (expires_at IS NULL OR expires_at>statement_timestamp()) RETURNING original_url`, [code]);
-    if (result.rows.length) return res.redirect(302,result.rows[0].original_url);
-    const existing = await pool.query('SELECT deleted_at FROM links WHERE code=$1', [code]);
-    const page = !existing.rows.length ? 'not-found' : existing.rows[0].deleted_at ? 'deleted' : 'expired';
-    return res.status(page === 'not-found' ? 404 : 410).sendFile(path.join(__dirname, `pages/${page}.html`));
-  } catch (err) {
-    console.error('Redirect failed:', err.code || 'internal');
-    res.status(503).sendFile(path.join(__dirname, 'pages/unavailable.html'));
+    // Never forward user cookies, user headers, or automatically follow Location with our token.
+    // No retries: a timed-out request may already have committed its click.
+    const upstream = await fetch(`${config.origin}/internal/links/${encodeURIComponent(code)}`, {
+      method: req.method, redirect: 'manual', signal: controller.signal,
+      headers: { Authorization: `Bearer ${config.token}` },
+    });
+    const status = upstream.status;
+    const location = upstream.headers.get('location');
+    const state = upstream.headers.get('x-link-state');
+    await upstream.body?.cancel();
+    if (res.destroyed) return;
+    if (controller.signal.aborted) throw new Error('Redirect timeout');
+    if (status === 302 && location) {
+      const target = new URL(location);
+      if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) throw new Error('Invalid redirect destination');
+      return res.redirect(302,target.href);
+    }
+    if (status === 404) return page(res,404,'not-found');
+    if (status === 410 && ['expired','deleted'].includes(state)) return page(res,410,state);
+    throw new Error('Redirect service unavailable');
+  } catch {
+    if (!res.destroyed) return page(res,503,'unavailable');
+  } finally {
+    clearTimeout(timer); res.off('close',disconnect);
   }
 });
 module.exports = router;
