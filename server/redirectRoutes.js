@@ -1,8 +1,28 @@
 const express = require('express');
 const path = require('node:path');
+const { setTimeout: delay } = require('node:timers/promises');
 const { getRedirectConfig } = require('./redirectConfig');
 const router = express.Router();
 const page = (res, status, name) => res.status(status).sendFile(path.join(__dirname, `pages/${name}.html`));
+async function waitUntilReady(config, signal) {
+  // Hosting can return a loading page before the process is ready. Probe only
+  // this read-only endpoint; never retry the request that increments clicks.
+  while (!signal.aborted) {
+    try {
+      const response = await fetch(`${config.origin}/healthz`, { redirect: 'manual', signal });
+      if (response.status === 200 && response.headers.get('content-type')?.includes('application/json')) {
+        const health = await response.json();
+        if (health.status === 'ok' && health.service === 'redirect') return;
+      } else {
+        await response.body?.cancel();
+      }
+    } catch {
+      if (signal.aborted) throw new Error('Redirect readiness timeout');
+    }
+    await delay(1000, undefined, { signal });
+  }
+  throw new Error('Redirect readiness timeout');
+}
 router.get('/:code', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const { code } = req.params;
@@ -12,7 +32,10 @@ router.get('/:code', async (req, res) => {
   const timer = setTimeout(() => controller.abort(), config.timeout);
   const disconnect = () => { if (!res.writableEnded) controller.abort(); };
   res.on('close', disconnect);
+  let stage = 'readiness';
   try {
+    await waitUntilReady(config, controller.signal);
+    stage = 'resolve';
     // Never forward user cookies, user headers, or automatically follow Location with our token.
     // No retries: a timed-out request may already have committed its click.
     const upstream = await fetch(`${config.origin}/internal/links/${encodeURIComponent(code)}`, {
@@ -32,9 +55,13 @@ router.get('/:code', async (req, res) => {
     }
     if (status === 404) return page(res,404,'not-found');
     if (status === 410 && ['expired','deleted'].includes(state)) return page(res,410,state);
+    console.error('Redirect upstream status:', status);
     throw new Error('Redirect service unavailable');
   } catch {
-    if (!res.destroyed) return page(res,503,'unavailable');
+    if (!res.destroyed) {
+      console.error('Redirect request failed:', stage, controller.signal.aborted ? 'timeout' : 'upstream');
+      return page(res,503,'unavailable');
+    }
   } finally {
     clearTimeout(timer); res.off('close',disconnect);
   }

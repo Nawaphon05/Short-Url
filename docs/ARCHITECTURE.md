@@ -53,6 +53,7 @@ flowchart TB
 - Gateway ใช้ origin จาก Environment ที่ผู้ดูแลกำหนด ไม่รับ URL บริการจากผู้ใช้
 - ใช้ service token ร่วมผ่าน HTTPS ฝั่ง Server และตรวจแบบ constant-time จาก digest ไม่ส่ง credentials นี้ไป Browser หรือ Location
 - ไม่ตาม redirect ของ upstream และไม่ retry อัตโนมัติ timeout ค่าเริ่มต้น 70 วินาที
+- Branch fix/redirect-cold-start ที่ยังไม่ Deploy เพิ่มการรอ `/healthz` แบบ read-only ภายใน timeout ก่อนส่งคำขอเปิดลิงก์หนึ่งครั้ง การตรวจ health ซ้ำไม่เพิ่ม clicks ส่วนคำขอเปิดลิงก์ยังไม่ retry
 - เมื่อบริการ Redirect ล่มหรือ token ผิด เปิดลิงก์แสดงหน้า 503 ธีมเดียวกัน สมาชิกและการจัดการลิงก์ยังแยกทำงานได้หากฐานข้อมูลพร้อม
 - ไม่มี REDIRECT_SERVICE_URL: server เลือก localRedirectRoutes เพื่อรองรับ rollback โหมดนี้ยังเป็น monolith ไม่ใช่การ Deploy สองบริการ
 - ไม่ใช้ fallback SQL หลัง remote timeout เพราะอาจนับคลิกซ้ำ
