@@ -1,6 +1,6 @@
 # Microservices — วิธีรันและ Deploy
 
-Branch `feature/microservices` เพิ่ม Redirect service ที่รันเป็น Node.js process และ Deploy แยกจากบริการหลักได้จริง ทดสอบสองบริการในเครื่องแล้ว ยังไม่ได้เปิดโหมดนี้บน Render เว็บออนไลน์เดิมเป็นระบบบริการเดียวจนกว่าจะตั้งค่าและ Deploy ครบทั้งสองบริการ
+Merge PR #7 เข้า `main` แล้ว Deploy commit `8644b34` บน Render วันที่ 16 ตุลาคม 2026 บริการหลัก https://short-url-4xil.onrender.com ใช้ `Redirect mode: remote service` และ Redirect service https://short-url-redirect.onrender.com ขึ้น `Redirect service ready` ตาม Logs จากผู้ใช้ ดู [ผลออนไลน์และข้อที่ยังรอยืนยัน](SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7)
 
 ## ขอบเขต
 
@@ -14,7 +14,7 @@ Branch `feature/microservices` เพิ่ม Redirect service ที่รั�
 
 ## ติดตั้งและรันในเครื่อง
 
-ใช้โค้ด Branch `feature/microservices` ที่ Push แล้ว ใช้ Node ตาม `.node-version` และฐานข้อมูลในเครื่องที่สร้างตาราง links ตั้งค่า server/.env และรัน migration 001 → 002 → 003 ตาม [README](../README.md) แล้ว โฟลเดอร์ clone เก่าบน main จะยังไม่มีบริการใหม่ ต้องสลับ Branch และติดตั้ง dependencies ก่อน
+ใช้โค้ด `main` หลัง PR #7 ใช้ Node ตาม `.node-version` และฐานข้อมูลในเครื่องที่สร้างตาราง links ตั้งค่า server/.env และรัน migration 001 → 002 → 003 ตาม [README](../README.md) แล้ว สำหรับ clone เก่าให้อัปเดต main และติดตั้ง dependencies ก่อน
 
 ```powershell
 npm.cmd ci --prefix server
@@ -119,4 +119,4 @@ Render Free รับ private-network inbound ไม่ได้ จึงใช
 - สร้าง ค้นหา แก้ชื่อ ลบ แบ่งหน้า และแยกสองบัญชียังถูกต้อง
 - ตรวจ Desktop/Mobile และทดลองติดตั้งใหม่ตามขั้นตอนสองบริการ
 
-ยังไม่ติ๊กผลออนไลน์ให้จากผลในเครื่อง
+ผลในเครื่องไม่แทนผลออนไลน์ รายการที่ยืนยันจริงและเหตุการณ์ 503 ชั่วคราวบันทึกใน [SUBMISSION.md](SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7) ไม่ต้องจงใจหยุดบริการออนไลน์เพื่อทดสอบซ้ำในรอบเอกสาร

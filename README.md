@@ -4,11 +4,13 @@
 
 **เว็บที่ Deploy แล้ว:** https://short-url-4xil.onrender.com
 
-ใช้ Vue + CSS, Node.js + Express (JavaScript) และ PostgreSQL เวอร์ชันออนไลน์ที่ยืนยันแล้วเป็น Backend เดียว ส่วน Branch นี้รองรับการแยก Redirect service
+ใช้ Vue + CSS, Node.js + Express (JavaScript) และ PostgreSQL แยกบริการหลักและ Redirect service เป็นสองบริการที่ Deploy แยกกัน โดยใช้ฐานข้อมูลร่วมกัน
 
-## โหมด Microservices (Branch พัฒนา)
+## โหมด Microservices
 
-`feature/microservices` แยกบริการ Redirect ที่รัน/Deploy อิสระ พร้อม Gateway รักษา URL และ QR เดิม โหมดสองบริการทดสอบในเครื่อง ยังไม่ได้ Deploy บน Render อ่าน [วิธีติดตั้ง รัน Deploy และ rollback](docs/MICROSERVICES.md) และ [Architecture](docs/ARCHITECTURE.md) ก่อนใช้โหมดนี้
+Merge PR #7 เข้า `main` และ Deploy commit `8644b34` บน Render วันที่ 16 ตุลาคม 2026 แล้ว บริการหลักใช้ `Redirect mode: remote service` เรียก https://short-url-redirect.onrender.com ผ่าน Gateway ที่รักษา URL และ QR เดิม ผู้ใช้ยืนยันสร้างลิงก์ เปิดปลายทาง สแกน QR มือถือ คลิกเพิ่ม หมดอายุแล้วคลิกไม่เพิ่ม และลบแล้วหายจากประวัติ/ค้นหา พร้อมหน้าถูกลบ ดู [ผลออนไลน์และข้อที่ยังรอยืนยัน](docs/SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7) และ [Architecture](docs/ARCHITECTURE.md)
+
+เคยพบ 503 ชั่วคราวแล้วกลับมาใช้งานได้ สาเหตุยังไม่ยืนยันจาก Logs ไม่ถือว่าตรวจความเสถียรครบแล้ว อ่าน [วิธีติดตั้ง รัน Deploy และ rollback](docs/MICROSERVICES.md)
 
 ต้องติดตั้ง dependencies ใน redirect-service เพิ่มและรันสอง process ที่ใช้ token เดียวกัน หากยังไม่ตั้ง REDIRECT_SERVICE_URL ขั้นตอนเดิมด้านล่างจะรัน local rollback mode (monolith) ได้ตามเดิม ไม่ถือว่าทดสอบ Microservice ครบจากโหมดนี้
 
@@ -66,13 +68,13 @@ Session ใช้ HttpOnly cookie (Secure บน production) ไม่เก็�
 ```powershell
 git clone https://github.com/Nawaphon05/Short-Url.git
 cd Short-Url
-git switch feature/microservices
+git switch main
 npm.cmd ci --prefix server
 npm.cmd ci --prefix client
 npm.cmd ci --prefix redirect-service
 ```
 
-ขั้นตอนนี้ใช้ Branch `feature/microservices` ซึ่งต้อง Push ก่อนผู้ตรวจจะติดตั้งจาก GitHub ได้ ส่วน `main` เป็นเวอร์ชันออนไลน์เดิม หากต้องการตรวจเวอร์ชันนั้นให้ข้ามคำสั่งสลับ Branch และไม่ต้องติดตั้ง redirect-service
+โค้ดสองบริการอยู่บน `main` หลัง PR #7 แล้ว หากมี clone เก่า ให้ตรวจว่าไม่มีงานค้างก่อน `git switch main` และ `git pull --ff-only` แล้วติดตั้ง dependencies ให้ครบทั้งสามส่วน
 
 ## สร้างฐานข้อมูล
 
