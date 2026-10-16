@@ -7,7 +7,8 @@ const { once } = require('node:events');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 const { Pool } = require('pg');
 
-for (const remote of [false, true]) test(`auth, ownership and redirects (${remote ? 'two services' : 'local rollback'}) against isolated local PostgreSQL schema`, { timeout: 60000 }, async () => {
+for (const mode of ['local', 'proxy', 'browser']) test(`auth, ownership and redirects (${mode}) against isolated local PostgreSQL schema`, { timeout: 60000 }, async () => {
+  const remote = mode !== 'local';
   const pool = new Pool(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {});
   assert.ok(['localhost', '127.0.0.1', '::1'].includes(new (require('pg').Client)(pool.options).connectionParameters.host), 'Tests only run against local PostgreSQL');
   const db = new (require('pg').Client)(pool.options).connectionParameters;
@@ -39,7 +40,7 @@ for (const remote of [false, true]) test(`auth, ownership and redirects (${remot
       let redirectReady = false;
       redirectChild = spawn(process.execPath, ['index.js'], {
         cwd: path.join(__dirname, '../../redirect-service'),
-        env: { ...process.env, ...databaseEnv, NODE_ENV: 'test', PORT: '3056', REDIRECT_SERVICE_TOKEN: serviceToken, PGOPTIONS: `-c search_path=${schema}` },
+        env: { ...process.env, ...databaseEnv, NODE_ENV: 'test', PORT: '3056', PUBLIC_BASE_URL: origin, REDIRECT_SERVICE_TOKEN: serviceToken, PGOPTIONS: `-c search_path=${schema}` },
         stdio: ['ignore','pipe','pipe'],
       });
       redirectChild.stdout.on('data',d => { if (String(d).includes('Redirect service ready')) redirectReady = true; });
@@ -51,10 +52,12 @@ for (const remote of [false, true]) test(`auth, ownership and redirects (${remot
       const wrong=await fetch('http://localhost:3056/internal/links/legacy01',{headers:{Authorization:'Bearer wrong'},redirect:'manual'});
       assert.equal(wrong.status,401);
       assert.equal((await fetch('http://localhost:3056/healthz')).status,200);
+      const home = await fetch('http://localhost:3056/',{redirect:'manual'});
+      assert.equal(home.status,302);assert.equal(home.headers.get('location'),origin);
     }
     child = spawn(process.execPath, ['index.js'], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, ...databaseEnv, NODE_ENV: 'test', PORT: '3057', PUBLIC_BASE_URL: origin, REDIRECT_SERVICE_URL: remote ? 'http://localhost:3056' : '', REDIRECT_SERVICE_TOKEN: serviceToken, PGOPTIONS: `-c search_path=${schema}` },
+      env: { ...process.env, ...databaseEnv, NODE_ENV: 'test', PORT: '3057', PUBLIC_BASE_URL: origin, REDIRECT_SERVICE_URL: remote ? 'http://localhost:3056' : '', REDIRECT_SERVICE_MODE: mode === 'browser' ? 'browser' : 'proxy', REDIRECT_SERVICE_TOKEN: serviceToken, PGOPTIONS: `-c search_path=${schema}` },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     child.stdout.on('data', d => { logs += d; });
@@ -65,10 +68,20 @@ for (const remote of [false, true]) test(`auth, ownership and redirects (${remot
       await new Promise(r => setTimeout(r,100));
     }
     assert.match(logs, /Server is running/);
-    const call = (url, { method = 'GET', body, cookie, headers = {} } = {}) => fetch(origin + url, {
+    const call = async (url, { method = 'GET', body, cookie, headers = {} } = {}) => {
+      const response = await fetch(origin + url, {
       method, redirect: 'manual', headers: { Origin: origin, 'Content-Type': 'application/json', 'X-Short-URL-Client': 'web', ...(cookie ? { Cookie: cookie } : {}), ...headers },
       ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+      });
+      if (mode === 'browser' && url.startsWith('/r/') && response.status === 302) {
+        const location = response.headers.get('location');
+        assert.equal(location, `http://localhost:3056${url}`);
+        assert.ok(!location.includes(serviceToken));
+        // Follow only the service hop, never the actual website. No user cookie.
+        return fetch(location, { method, redirect: 'manual' });
+      }
+      return response;
+    };
     const password = 'Testpass123';
     for (const invalid of ['Abc12', 'Abcdefghijk12', 'abcdef12']) {
       assert.equal((await call('/api/auth/signup', { method:'POST', body:{email:'invalid@example.com',password:invalid} })).status,400);

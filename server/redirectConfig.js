@@ -9,6 +9,8 @@ function getRedirectConfig() {
   if (!token || token.startsWith('replace-with-') || !/^[A-Za-z0-9_-]{32,256}$/.test(token)) throw new Error('REDIRECT_SERVICE_TOKEN must contain 32-256 URL-safe characters');
   const timeout = Number(process.env.REDIRECT_SERVICE_TIMEOUT_MS || 70000);
   if (!Number.isInteger(timeout) || timeout < 100 || timeout > 90000) throw new Error('Redirect timeout must be 100-90000 ms');
-  return { origin:url.origin, token, timeout };
+  const mode = process.env.REDIRECT_SERVICE_MODE || 'proxy';
+  if (!['proxy', 'browser'].includes(mode)) throw new Error('REDIRECT_SERVICE_MODE must be proxy or browser');
+  return { origin:url.origin, token, timeout, mode };
 }
 module.exports = { getRedirectConfig };

@@ -34,6 +34,13 @@ test('gateway timeout, upstream failure, safe forwarding and configuration', asy
     server=app.listen(0,'127.0.0.1');await once(server,'listening');const origin=`http://127.0.0.1:${server.address().port}`;
     const call=()=>fetch(origin+'/r/legacy01',{redirect:'manual',headers:{Cookie:'user-secret=should-not-forward',Authorization:'user-supplied'}});
     assert.equal((await call()).status,302);assert.equal(secretSeen,`Bearer ${process.env.REDIRECT_SERVICE_TOKEN}`);assert.equal(cookieSeen,undefined);
+    process.env.REDIRECT_SERVICE_MODE='browser';
+    const beforeHandoff={calls,probes};
+    const handoff=await call();
+    assert.equal(handoff.status,302);
+    assert.equal(handoff.headers.get('location'),process.env.REDIRECT_SERVICE_URL+'/r/legacy01');
+    assert.equal(calls,beforeHandoff.calls);assert.equal(probes,beforeHandoff.probes,'Handoff must work even when upstream is asleep');
+    process.env.REDIRECT_SERVICE_MODE='proxy';
     mode='warming';probes=0;process.env.REDIRECT_SERVICE_TIMEOUT_MS='3000';
     const coldBefore=calls;
     assert.equal((await call()).status,302);
@@ -58,6 +65,6 @@ test('gateway timeout, upstream failure, safe forwarding and configuration', asy
   } finally {
     if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
     upstream.closeAllConnections();if(upstream.listening)await new Promise(resolve=>upstream.close(resolve));
-    for(const key of ['NODE_ENV','REDIRECT_SERVICE_URL','REDIRECT_SERVICE_TOKEN','REDIRECT_SERVICE_TIMEOUT_MS']){if(old[key]===undefined)delete process.env[key];else process.env[key]=old[key];}
+    for(const key of ['NODE_ENV','REDIRECT_SERVICE_URL','REDIRECT_SERVICE_TOKEN','REDIRECT_SERVICE_TIMEOUT_MS','REDIRECT_SERVICE_MODE']){if(old[key]===undefined)delete process.env[key];else process.env[key]=old[key];}
   }
 });
