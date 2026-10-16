@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue';
+import LinkVisual from './LinkVisual.vue';
 import { api } from '../api';
 const emit = defineEmits(['authenticated']);
 const mode = ref('login');
@@ -64,16 +65,10 @@ async function submit(event) {
 <template>
   <section class="auth-layout" aria-labelledby="auth-title">
     <div class="auth-intro">
-      <div class="auth-link-art" aria-hidden="true">
-        <svg viewBox="0 0 80 80" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-          <path class="chain-upper" d="m36 28 10-10a14 14 0 0 1 20 20L55 49a14 14 0 0 1-20 0" />
-          <path class="chain-lower" d="m44 52-10 10a14 14 0 0 1-20-20l11-11a14 14 0 0 1 20 0" />
-          <path class="chain-join" d="m30 50 20-20" />
-        </svg>
-      </div>
-      <h1>ลิงก์ของคุณ<br>จัดการได้ในที่เดียว</h1>
-      <p class="intro">ย่อลิงก์ แชร์ผ่าน QR Code<br>และติดตามจำนวนคลิกในบัญชีของคุณ</p>
-      <div class="auth-capabilities"><span>ประวัติส่วนตัว</span><span>QR Code</span><span>จัดการอายุลิงก์</span></div>
+      <h1>ลิงก์สั้น แชร์ง่าย.<br><span>จัดการได้ในที่เดียว.</span></h1>
+      <p class="intro">ย่อลิงก์ให้จำง่าย แชร์ผ่าน QR Code<br>และจัดการทุกลิงก์ได้ในบัญชีเดียว</p>
+      <LinkVisual />
+      <div class="auth-capabilities"><span>ตั้งรหัสเอง</span><span>QR Code</span><span>กำหนดอายุลิงก์</span></div>
       <p class="auth-note">คนรับลิงก์เปิดได้ทันที โดยไม่ต้องมีบัญชี</p>
     </div>
     <section class="auth-panel">

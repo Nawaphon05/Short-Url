@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import LinkVisual from './components/LinkVisual.vue';
 import AuthForm from './components/AuthForm.vue';
 import { api } from './api';
 import LinkHistory from './components/LinkHistory.vue';
@@ -74,7 +75,7 @@ async function createShortUrl() {
 </script>
 <template>
   <a class="skip-link" :href="user ? '#url' : '#auth-email'">{{ user ? 'ข้ามไปช่องวาง URL' : 'ข้ามไปฟอร์ม Login' }}</a>
-  <header class="site-header"><div class="header-inner"><a class="brand" href="./">Short URL</a><div v-if="user" class="account-menu"><span class="account-email">{{ user.email }}</span><button type="button" :disabled="loggingOut || loading" @click="logout"><span v-if="loggingOut" class="spinner" aria-hidden="true"></span>{{ loggingOut ? 'กำลังออก…' : 'Logout' }}</button></div></div></header>
+  <header class="site-header"><div class="header-inner"><a class="brand" href="./"><svg class="brand-mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m13 11 4-4a6 6 0 0 1 9 9l-5 5M19 21l-4 4a6 6 0 0 1-9-9l5-5m1 9 8-8"/></svg>Short URL</a><a v-if="user" class="header-nav" href="#history">ลิงก์ของฉัน<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a><div v-if="user" class="account-menu"><span class="account-email">{{ user.email }}</span><button type="button" :disabled="loggingOut || loading" @click="logout"><span v-if="loggingOut" class="spinner" aria-hidden="true"></span>{{ loggingOut ? 'กำลังออก…' : 'Logout' }}</button></div></div></header>
   <main class="container" :class="{ 'workspace': user }">
     <p v-if="checking" class="empty-state" role="status">กำลังตรวจสอบบัญชี…</p>
     <div v-if="sessionError" class="session-error" role="alert">{{ sessionError }} <button v-if="!user" @click="checkSession">ลองอีกครั้ง</button></div>
@@ -83,8 +84,8 @@ async function createShortUrl() {
     <AuthForm v-if="!checking && !user" key="auth" @authenticated="authenticated" />
     <div v-else-if="!checking && user" key="workspace" class="workspace-content">
     <section class="link-composer" aria-labelledby="create-title">
-      <div class="composer-heading"><svg class="composer-symbol" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m20 16 6-6a9 9 0 0 1 13 13l-7 7a9 9 0 0 1-13 0M28 32l-6 6a9 9 0 0 1-13-13l7-7a9 9 0 0 1 13 0m-12 13 14-14"/></svg><div><h1 id="create-title" tabindex="-1">ลิงก์ที่จำง่าย <br>จัดการได้ครบ</h1><p class="intro">ตั้งชื่อ ค้นหา และกำหนดอายุ <br>พร้อมแชร์ผ่านลิงก์และ QR Code</p></div><p class="composer-caption">Short URL<span aria-hidden="true"> / </span>ลิงก์ของคุณ</p></div>
-      <div class="composer-body"><h2 class="composer-form-title">สร้างลิงก์ใหม่</h2>
+      <div class="composer-heading"><div><h1 id="create-title" tabindex="-1">ลิงก์ยาวแค่ไหน<br><span>ก็แชร์ง่าย.</span></h1><p class="intro">สร้างลิงก์ในแบบของคุณ จัดการทุกการแชร์<br>พร้อม QR Code และจำนวนคลิกในที่เดียว</p><a class="hero-jump" href="#history">ดูลิงก์ของฉัน <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div><LinkVisual /></div>
+      <div class="composer-body"><div class="form-title-row"><h2 class="composer-form-title">สร้างลิงก์ใหม่</h2><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></div>
       <p class="composer-description">ตั้งชื่อให้หาเจอ แชร์ด้วยรหัสที่คุณเลือก</p>
       <form @submit.prevent="createShortUrl" :aria-busy="loading">
         <div class="draft-field"><label for="link-title">ชื่อลิงก์ <span class="optional">ไม่บังคับ</span></label><input id="link-title" v-model="title" maxlength="120" placeholder="เช่น สมัครงานบริษัท A" :readonly="loading" /></div>

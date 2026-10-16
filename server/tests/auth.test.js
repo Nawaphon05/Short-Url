@@ -7,12 +7,15 @@ const { once } = require('node:events');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 const { Pool } = require('pg');
 
-test('auth, ownership, migration and public redirects against isolated local PostgreSQL schema', { timeout: 60000 }, async () => {
+for (const remote of [false, true]) test(`auth, ownership and redirects (${remote ? 'two services' : 'local rollback'}) against isolated local PostgreSQL schema`, { timeout: 60000 }, async () => {
   const pool = new Pool(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {});
   assert.ok(['localhost', '127.0.0.1', '::1'].includes(new (require('pg').Client)(pool.options).connectionParameters.host), 'Tests only run against local PostgreSQL');
+  const db = new (require('pg').Client)(pool.options).connectionParameters;
+  const databaseEnv = { DATABASE_URL: process.env.DATABASE_URL || '', PGHOST: db.host, PGPORT: String(db.port), PGDATABASE: db.database, PGUSER: db.user, PGPASSWORD: db.password || '' };
   const schema = `auth_test_${Date.now()}`;
   const origin = 'http://localhost:3057';
   let child;
+  let redirectChild;
   let logs = '';
   try {
     await pool.query(`CREATE SCHEMA ${schema}`);
@@ -31,9 +34,27 @@ test('auth, ownership, migration and public redirects against isolated local Pos
       await client.query(softDelete);
       await client.query(softDelete);
     } finally { await client.query('SET search_path TO public'); client.release(); }
+    const serviceToken = 'local-test-token-with-more-than-32-characters';
+    if (remote) {
+      let redirectReady = false;
+      redirectChild = spawn(process.execPath, ['index.js'], {
+        cwd: path.join(__dirname, '../../redirect-service'),
+        env: { ...process.env, ...databaseEnv, NODE_ENV: 'test', PORT: '3056', REDIRECT_SERVICE_TOKEN: serviceToken, PGOPTIONS: `-c search_path=${schema}` },
+        stdio: ['ignore','pipe','pipe'],
+      });
+      redirectChild.stdout.on('data',d => { if (String(d).includes('Redirect service ready')) redirectReady = true; });
+      redirectChild.stderr.on('data',() => {});
+      for(let n=0;n<100&&!redirectReady;n++) { if(redirectChild.exitCode!==null) throw new Error('Redirect test service exited'); await new Promise(r=>setTimeout(r,100)); }
+      assert.ok(redirectReady,'Independent redirect process starts');
+      const denied=await fetch('http://localhost:3056/internal/links/legacy01',{redirect:'manual'});
+      assert.equal(denied.status,401);
+      const wrong=await fetch('http://localhost:3056/internal/links/legacy01',{headers:{Authorization:'Bearer wrong'},redirect:'manual'});
+      assert.equal(wrong.status,401);
+      assert.equal((await fetch('http://localhost:3056/healthz')).status,200);
+    }
     child = spawn(process.execPath, ['index.js'], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, NODE_ENV: 'test', PORT: '3057', PUBLIC_BASE_URL: origin, PGOPTIONS: `-c search_path=${schema}` },
+      env: { ...process.env, ...databaseEnv, NODE_ENV: 'test', PORT: '3057', PUBLIC_BASE_URL: origin, REDIRECT_SERVICE_URL: remote ? 'http://localhost:3056' : '', REDIRECT_SERVICE_TOKEN: serviceToken, PGOPTIONS: `-c search_path=${schema}` },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     child.stdout.on('data', d => { logs += d; });
@@ -83,6 +104,10 @@ test('auth, ownership, migration and public redirects against isolated local Pos
     assert.equal((await (await call('/api/links',{cookie:a.cookie})).json()).items[0].clicks,'0');
     const redirect = await call(route); assert.equal(redirect.status,302); assert.equal(redirect.headers.get('location'),'https://example.com/product');
     assert.equal((await (await call('/api/links',{cookie:a.cookie})).json()).items[0].clicks,'1');
+    const concurrent = await Promise.all(Array.from({ length: 20 }, () => call(route)));
+    assert.ok(concurrent.every(response => response.status === 302));
+    const counted = await pool.query(`SELECT clicks FROM ${schema}.links WHERE id=$1`, [link.id]);
+    assert.equal(counted.rows[0].clicks, '21', 'Concurrent GET requests must not lose click increments');
     assert.equal((await call('/r/legacy01',{method:'HEAD'})).status,302);
     // Verify the exact page boundary and no duplicates across pages.
     for (let n = 1; n <= 9; n++) await pool.query(`INSERT INTO ${schema}.links(code,original_url,user_id) VALUES($1,$2,$3)`, [`page${String(n).padStart(4,'0')}`,'https://example.com/pagination',a.user.id]);
@@ -118,6 +143,7 @@ test('auth, ownership, migration and public redirects against isolated local Pos
     const rename=await call(`/api/links/${managed.id}`,{method:'PATCH',cookie:a.cookie,body:{title:'New name',custom_code:'cannot-change'}});
     assert.equal(rename.status,200); assert.equal((await rename.json()).code,'summer-sale');
     const search = async(q,cookie=a.cookie) => (await (await call(`/api/links?q=${encodeURIComponent(q)}`,{cookie})).json()).items;
+    assert.equal((await search('example.com/product')).length,1,'Search must find the oldest link beyond the first page');
     assert.equal((await search('NEW NAME')).length,1);
     assert.equal((await search('summer-sale')).length,1);
     assert.equal((await search('example.com/campaign')).length,1);
@@ -172,6 +198,7 @@ test('auth, ownership, migration and public redirects against isolated local Pos
     assert.ok(limited);
   } finally {
     if (child && child.exitCode === null) { const closed=once(child,'exit'); child.kill(); await closed; }
+    if (redirectChild && redirectChild.exitCode === null) { const closed=once(redirectChild,'exit'); redirectChild.kill(); await closed; }
     await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await pool.end();
   }

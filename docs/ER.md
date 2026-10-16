@@ -2,6 +2,10 @@
 
 โครงสร้างของ main หลัง Merge PR #5 และ migration 001 → 002 → 003 บน Render ผู้ใช้ยืนยัน Query สำเร็จและคอลัมน์จริงแล้ว วันที่ 16 ตุลาคม 2026 Deploy commit abb74ac สำเร็จ และแสดง deleted_at ของลิงก์ที่ลบออนไลน์แล้ว
 
+## การใช้ข้อมูลในโหมดสองบริการ
+
+Branch feature/microservices ไม่เพิ่มตารางหรือคอลัมน์ บริการหลักดูแล users/sessions และข้อมูล links ส่วน redirect-service อ่าน code/original_url/expires_at/deleted_at และ UPDATE clicks ในตาราง links เดิม ขอบเขตการใช้ฐานข้อมูลร่วมกันอธิบายใน [Architecture](ARCHITECTURE.md) ไม่อ้างว่าแยกฐานข้อมูลอิสระ
+
 ## ความสัมพันธ์ฐานข้อมูล
 
 ```mermaid

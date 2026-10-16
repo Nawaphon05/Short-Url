@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   font-family: "Leelawadee UI", "Noto Sans Thai", Tahoma, system-ui, sans-serif;
   color: #242426;
   background: #f5f5f6;
@@ -206,7 +206,7 @@ button.copied { background: #f1f1f3; border-color: #77777e; color: #242426; }
 .auth-link-art .chain-lower { stroke: #f5f5f6; }
 /* Signed-in workspace */
 .workspace { padding-top: 32px; }
-.workspace button:not(.primary):not(.qr-toggle):not(.copied) { color: #35353b; }
+.workspace button:where(:not(.primary):not(.qr-toggle):not(.copied)) { color: #35353b; }
 .account-menu > button { color: #49494f; border-color: #dedee3; font-size: 14px; }
 .link-composer { background: #ffffff; padding: 30px 32px; border-radius: 16px; }
 .composer-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
@@ -384,3 +384,10 @@ button.copied { background: #f1f1f3; border-color: #77777e; color: #242426; }
  .workspace .row-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
  .workspace .row-actions > .copy-control { align-items: flex-start; }
 }
+/* Feedback stays close to the action; no modal or extra wait. */
+.action-feedback { display: flex; align-items: center; gap: 10px; margin: 16px 0; padding: 12px 16px; background: #eeeef0; border-radius: 8px; font-size: 14px; color: #35353b; }
+.action-feedback > .icon { color: #a32328; }
+.action-feedback button { margin-left: auto; padding: 8px; min-width: 44px; border: 0; background: transparent; }
+.feedback-enter-active, .feedback-leave-active { transition: opacity 160ms ease, transform 220ms var(--ease); }
+.feedback-enter-from, .feedback-leave-to { opacity: 0; transform: translateY(-5px); }
+@media(prefers-reduced-motion:reduce) { .feedback-enter-active, .feedback-leave-active { transition: none; } }

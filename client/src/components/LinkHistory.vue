@@ -33,6 +33,7 @@ async function deleteLink(link) {
     deletingId.value = null;
     await loadHistory(!links.value.length && page.value > 1 ? page.value - 1 : page.value);
     announcement.value = 'ลบลิงก์แล้ว ลิงก์และ QR เดิมจะเปิดไม่ได้';
+    actionFeedback.value = announcement.value;
     await nextTick(); document.getElementById('history-title')?.focus();
   } catch (err) { if (!disposed) deleteError.value = err.serviceUnavailable ? err.message : err.message || 'ลบลิงก์ไม่สำเร็จ กรุณาลองอีกครั้ง'; }
   finally { saving.value = false; }
@@ -55,6 +56,7 @@ async function saveTitle(link) {
     await cancelEdit(link.id); announcement.value = 'บันทึกชื่อแล้ว';
     await loadHistory(page.value);
     if (!links.value.length && page.value > 1) await loadHistory(page.value - 1);
+    actionFeedback.value = 'บันทึกชื่อใหม่แล้ว URL และ QR ยังใช้ได้เหมือนเดิม';
   } catch (err) { if (!disposed) editError.value = err.message || 'บันทึกชื่อไม่สำเร็จ กรุณาลองใหม่'; }
   finally { saving.value = false; }
 }
@@ -64,6 +66,7 @@ const hasMore = ref(false);
 const loading = ref(false);
 const error = ref('');
 const announcement = ref('');
+const actionFeedback = ref('');
 const updatedAt = ref('');
 const changedIds = ref([]);
 let pendingRefresh = false;
@@ -119,6 +122,7 @@ defineExpose({ refresh: () => {
     <div class="section-heading"><div><h2 id="history-title" tabindex="-1">ลิงก์ของคุณ</h2><p class="help">แสดงเฉพาะลิงก์ที่สร้างด้วยบัญชีนี้</p></div><button type="button" :disabled="loading || saving" @click="loadHistory()"><svg class="icon" :class="{ spinning: loading }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9" /></svg>{{ loading ? 'กำลังโหลด…' : 'รีเฟรชข้อมูล' }}</button></div>
     <form class="history-search" role="search" @submit.prevent="search"><label for="history-query" class="sr-only">ค้นหาลิงก์ของคุณ</label><div class="search-input"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="history-query" v-model="query" type="search" maxlength="200" placeholder="ค้นหาชื่อ URL หรือรหัสลิงก์ทุกหน้า" :readonly="loading || saving" /></div><button type="submit" :disabled="loading || saving">ค้นหา</button><button v-if="activeQuery" type="button" :disabled="loading || saving" @click="clearSearch">ล้างคำค้น</button></form>
     <p v-if="activeQuery" class="search-summary">ผลการค้นหา “{{ activeQuery }}” · เฉพาะบัญชีของคุณ</p>
+    <Transition name="feedback"><p v-if="actionFeedback" :key="actionFeedback" class="action-feedback" role="status"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>{{ actionFeedback }}<button type="button" aria-label="ปิดข้อความแจ้งผล" @click="actionFeedback = ''"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></p></Transition>
     <div class="history-meta"><p class="history-note">{{ links.length ? `แสดง ${links.length} รายการในหน้านี้ · ` : '' }}จำนวนคลิกรวมการเปิดซ้ำ</p><p class="update-status" role="status">{{ loading ? 'กำลังอัปเดตข้อมูล…' : error ? 'อัปเดตไม่สำเร็จ' : updatedAt ? `อัปเดตแล้ว ${updatedAt}` : '' }}</p></div>
     <p class="sr-only" role="status">{{ loading ? 'กำลังโหลดประวัติ' : announcement }}</p>
     <p v-if="error" class="error" role="alert">{{ error }}<span v-if="links.length"> ข้อมูลด้านล่างเป็นข้อมูลที่โหลดไว้ก่อนหน้า</span></p>
