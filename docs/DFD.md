@@ -1,6 +1,6 @@
 # Data Flow Diagram — Short URL พร้อม Login
 
-สถานะ: แบบ Branch feature/link-management หลัง migration 002 และ 003 ยังไม่ได้ Deploy รอบนี้ ระบบสมาชิกเดิมผู้ใช้ยืนยัน QR มือถือและการแยกสองบัญชีผ่านแล้ว
+สถานะ: กระบวนการของ main หลัง Merge PR #5 รัน migration 002 และ 003 และ Deploy บน Render สำเร็จ วันที่ 16 ตุลาคม 2026 ผล QR มือถือและการแยกสองบัญชีเป็นผลออนไลน์ที่ผู้ใช้ยืนยันก่อนเพิ่มชุดจัดการลิงก์ ส่วนการลบชุดใหม่มีหลักฐาน deleted_at จากผู้ใช้แล้ว ดูผลและรายการตรวจที่เหลือใน [SUBMISSION.md](SUBMISSION.md)
 ภาพใช้ Mermaid เพื่อเปิดดูบน GitHub หรือ Markdown preview ที่รองรับ Mermaid
 
 ## Context Diagram (Process 0)

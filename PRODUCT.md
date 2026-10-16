@@ -27,4 +27,4 @@ web
 
 ## Open Decisions
 
-ยังไม่ระบุกลุ่มผู้ใช้เฉพาะ ใช้ Hosting Render Branch feature/link-management เพิ่มชื่อ/แก้ชื่อ ค้นหา รหัส URL กำหนดเอง วันหมดอายุ และลบแบบ soft delete พร้อม transition Login/Logout ทดสอบในเครื่องแล้ว ยังไม่ Deploy ฟังก์ชันใหม่
+ยังไม่ระบุกลุ่มผู้ใช้เฉพาะ ใช้ Hosting Render ระบบชื่อ/แก้ชื่อ ค้นหา รหัส URL กำหนดเอง วันหมดอายุ และ soft delete พร้อม transition Login/Logout Merge เข้า main และ Deploy แล้วหลัง migration 002/003 ผู้ใช้ยืนยันการบันทึก deleted_at ออนไลน์ ผลออนไลน์อื่นยังต้องเก็บให้ครบ
