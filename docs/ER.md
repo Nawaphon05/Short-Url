@@ -1,40 +1,24 @@
-# ER Diagram — Short URL
+﻿# ER Diagram — Short URL
 
-สถานะ: แบบที่บันทึกก่อนพัฒนาและอัปเดตตามการพัฒนาบน Branch `Feature/login` แล้ว
-เพิ่ม users, sessions และ links.user_id ตาม migration 001 ทดสอบในเครื่องแล้ว ยังไม่ได้เปลี่ยนฐานข้อมูล Render
+เอกสารระบบปัจจุบันบน `main` ซึ่ง Deploy บน Render แล้ว ผู้ใช้ยืนยันว่ารัน migration และทดสอบแยกสองบัญชีผ่าน แบบก่อนพัฒนาเก็บอยู่ในประวัติ Git ไม่ได้สร้างเอกสารย้อนหลังแทนประวัติเดิม
 
-## ฐานข้อมูลปัจจุบัน
-
-```mermaid
-erDiagram
-    LINKS {
-        bigint id PK
-        varchar_8 code UK
-        text original_url
-        bigint clicks
-        timestamptz created_at
-    }
-```
-
-`id` เป็น identity, `code` ไม่ซ้ำ, clicks เริ่ม 0 และต้องไม่ติดลบ, created_at เริ่มจากเวลาปัจจุบัน ทุกคอลัมน์ห้าม NULL
-
-## แบบเพิ่มการยืนยันตัวตน
+## ความสัมพันธ์ฐานข้อมูล
 
 ```mermaid
 erDiagram
-    USERS ||--o{ LINKS : owns
+    USERS |o--o{ LINKS : owns
     USERS ||--o{ SESSIONS : has
 
     USERS {
         bigint id PK
-        varchar_254 email UK
+        varchar(254) email UK
         text password_hash
         timestamptz created_at
     }
     LINKS {
         bigint id PK
         bigint user_id FK "nullable for legacy links"
-        varchar_8 code UK
+        varchar(8) code UK
         text original_url
         bigint clicks
         timestamptz created_at
@@ -47,44 +31,55 @@ erDiagram
     }
 ```
 
-ความสัมพันธ์: ผู้ใช้หนึ่งคนมีลิงก์ได้ศูนย์ถึงหลายรายการ และมี session ได้หลายอุปกรณ์
-ลิงก์ใหม่ต้องมีเจ้าของหนึ่งคน ส่วนลิงก์เก่าอนุญาตไม่มีเจ้าของ จึงมีข้อยกเว้นจากเส้นความสัมพันธ์ LINKS ในภาพ: `user_id` เป็น NULL ได้เฉพาะข้อมูลเดิม
+- ผู้ใช้มีลิงก์ได้ 0 ถึงหลายรายการ ลิงก์มีเจ้าของได้ 0 หรือ 1 คน เพราะข้อมูลเก่าก่อนเพิ่ม Login มี `user_id=NULL`
+- API กำหนดเจ้าของให้ลิงก์ใหม่จาก session เสมอ แม้ schema อนุญาต NULL เพื่อรักษาลิงก์เดิม
+- ผู้ใช้มี session ได้หลายรายการ แต่ละ session ต้องมีเจ้าของหนึ่งคน
+- ไม่สร้างตาราง QR เพราะสร้างภาพบน Frontend ไม่เก็บตารางคลิกแยก เพราะเก็บยอดรวมที่ `links.clicks`
 
-## พจนานุกรมข้อมูลที่เสนอ
+## พจนานุกรมข้อมูล
 
-| ตาราง/คอลัมน์ | ข้อกำหนดและการใช้งาน |
-|---|---|
-| users.id | bigint identity, primary key |
-| users.email | varchar(254), not null, unique; normalize โดย trim และแปลง lowercase ก่อนเก็บ/ค้นหา |
-| users.password_hash | text, not null; เก็บผลจาก password hashing ที่มี salt ไม่เก็บรหัสผ่านจริง |
-| users.created_at | timestamptz, not null, default now() |
-| links.user_id | bigint, nullable สำหรับลิงก์เดิม; FK ไป users.id; เพิ่ม index สำหรับค้นประวัติตามเจ้าของ |
-| links คอลัมน์เดิม | รักษาชนิดข้อมูล default และ constraints ของระบบปัจจุบัน |
-| sessions.token_hash | text, primary key; เก็บ hash ของ session token สุ่ม ไม่เก็บ token ดิบ |
-| sessions.user_id | bigint, not null, FK ไป users.id; เพิ่ม index |
-| sessions.created_at | timestamptz, not null, default now() |
-| sessions.expires_at | timestamptz, not null; ต้องมากกว่า created_at; เพิ่ม index เพื่อทำความสะอาด session หมดอายุ |
+| ตาราง.คอลัมน์ | ชนิด | ข้อกำหนด / ความหมาย |
+|---|---|---|
+| users.id | bigint | Identity, PK, NOT NULL |
+| users.email | varchar(254) | UNIQUE, NOT NULL, CHECK ให้เป็น lowercase และไม่มีช่องว่างหัวท้าย |
+| users.password_hash | text | NOT NULL; scrypt พร้อม salt และพารามิเตอร์ ไม่เก็บรหัสผ่านจริง |
+| users.created_at | timestamptz | NOT NULL, DEFAULT now() |
+| links.id | bigint | Identity, PK, NOT NULL |
+| links.user_id | bigint | Nullable, FK → users.id; ON DELETE NO ACTION |
+| links.code | varchar(8) | UNIQUE, NOT NULL; รหัสสุ่ม base64url 8 ตัว |
+| links.original_url | text | NOT NULL; API รับ HTTP(S) ไม่เกิน 4096 ตัวอักษร และไม่รับ URL ที่มี username/password |
+| links.clicks | bigint | NOT NULL, DEFAULT 0, CHECK >= 0; รวมการเปิดซ้ำ |
+| links.created_at | timestamptz | NOT NULL, DEFAULT now() |
+| sessions.token_hash | text | PK, NOT NULL; SHA-256 ของ session token สุ่ม ไม่ใช่ token ดิบ |
+| sessions.user_id | bigint | NOT NULL, FK → users.id; ON DELETE CASCADE |
+| sessions.created_at | timestamptz | NOT NULL, DEFAULT now() |
+| sessions.expires_at | timestamptz | NOT NULL, CHECK > created_at |
 
-## กติกาในการพัฒนา
+ข้อจำกัดความยาวรหัสผ่าน, URL และนโยบาย session ตรวจในแอป ไม่ใช่ CHECK ทั้งหมดในฐานข้อมูล
 
-- สมัครสมาชิกใช้ Email และ Password; ไม่มีระบบ Admin, social login, ยืนยันอีเมล หรือรีเซ็ตรหัสผ่านในรอบแรก
-- ใช้ password hashing สำหรับรหัสผ่าน เช่น scrypt ผ่าน Node.js crypto พร้อม salt สุ่มและค่าพารามิเตอร์ที่บันทึกไว้สำหรับตรวจสอบภายหลัง ไม่ใช้ SHA-256 เปล่า ๆ กับรหัสผ่าน
-- สร้าง session token แบบสุ่ม ส่งเฉพาะ cookie HttpOnly, SameSite=Lax และ Secure บน HTTPS; ฝั่งฐานข้อมูลเก็บ token hash เท่านั้น
-- session ปกติอายุ 12 ชั่วโมงและใช้ session cookie; เมื่อเลือกจำการเข้าสู่ระบบ ใช้ persistent cookie และ session อายุ 7 วัน ไม่ต่ออายุเงียบ Logout ลบ session ฝั่ง Server และล้าง cookie ตรวจ expires_at ทุกคำขอและล้างแถวหมดอายุเมื่อ Login สำเร็จ
-- เปลี่ยน session เมื่อ Login สำเร็จ; ไม่ส่ง password_hash หรือ token_hash กลับใน API
-- ตรวจ Origin และป้องกัน CSRF สำหรับคำขอที่เปลี่ยนข้อมูล พร้อมจำกัดความถี่ Login/Sign up
-- API สร้างลิงก์ต้อง Login และกำหนด user_id จาก session ห้ามเชื่อค่าเจ้าของที่ผู้ใช้ส่งมา
-- ประวัติ query เฉพาะ user_id จาก session และแบ่งหน้าหลังกรองเจ้าของแล้ว
-- คนทั่วไปเปิด `/r/:code` ได้โดยไม่ Login; GET เพิ่มคลิก ส่วน HEAD ไม่เพิ่มคลิก
-- ลิงก์เดิมคง user_id=NULL ไม่แจกให้บัญชีแรกหรือบัญชีใดอัตโนมัติ เปิด Redirect ได้ แต่ไม่แสดงในประวัติส่วนตัว
-- ไม่มีลบบัญชีในรอบนี้; FK ใช้ NO ACTION สำหรับลิงก์เพื่อไม่ให้ลิงก์สาธารณะถูกลบตามบัญชีโดยไม่ตั้งใจ ส่วน session เสนอ ON DELETE CASCADE
+## Index เพิ่มเติมจาก migration
 
-## แผนเปลี่ยนฐานข้อมูล
+- `links_user_created_idx (user_id, created_at DESC, id DESC)` สำหรับประวัติเฉพาะเจ้าของ เรียงใหม่ก่อน และแบ่งหน้าละ 10 รายการ
+- `sessions_user_idx (user_id)` สำหรับค้น session ตามเจ้าของ
+- `sessions_expiry_idx (expires_at)` สำหรับล้าง session หมดอายุ
+- Primary key และ UNIQUE สร้าง index รองรับโดย PostgreSQL
 
-1. สำรองฐานข้อมูลในเครื่องและทดสอบบนสำเนาก่อน
-2. เพิ่ม users และ sessions แล้วเพิ่ม links.user_id แบบ nullable พร้อม FK/index โดยไม่ลบข้อมูลเดิม
-3. ทดสอบหลายบัญชี การเข้าถึงข้ามบัญชี session หมดอายุ และลิงก์เดิม
-4. เขียน migration และขั้นตอน rollback ที่ไม่ทำข้อมูลสูญหายก่อนใช้กับ Render
-5. อัปเดตภาพและรายละเอียดนี้เป็นแบบที่พัฒนาแล้วหลังตรวจ schema จริง
+## กติกาปัจจุบัน
 
-SQL migration ที่พัฒนาจากแบบนี้อยู่ใน `server/migrations/001_auth.sql` ทดสอบการรันซ้ำและรักษาลิงก์เดิมใน schema แยกแล้ว เอกสารนี้ไม่ใช่คำสั่งให้เปลี่ยนฐานข้อมูลออนไลน์โดยอัตโนมัติ
+- Sign up ตรวจ Password 6–12 ตัวอักษรและมี A–Z อย่างน้อยหนึ่งตัว ตามขอบเขตเดโมที่เลือก ไม่มีการบังคับนโยบายใหม่นี้กับรหัสเดิมตอน Login (รับ 1–128 ตัวอักษรเพื่อรองรับบัญชีเดิม)
+- scrypt ใช้ N=32768, r=8, p=3, salt สุ่ม 16 bytes และ derived key 64 bytes
+- Session token สุ่ม 32 bytes ส่ง cookie HttpOnly, SameSite=Lax และ Secure พร้อมชื่อ __Host-short_session บน production
+- ไม่เลือกจำ: session สูงสุด 12 ชั่วโมงและไม่มี Max-Age; เลือกจำ: cookie และ session อายุ 7 วัน ไม่ต่ออายุเงียบ Logout ลบ session และล้าง cookie
+- ตรวจ expires_at ทุกคำขอที่ต้อง Login และล้าง session หมดอายุเมื่อ Login สำเร็จ
+- เก็บ Email ที่เลือกจำใน localStorage ได้ แต่ Password ให้ Password Manager ของเบราว์เซอร์จัดการ ไม่เก็บ session token หรือรหัสผ่านใน localStorage
+- ลิงก์เก่าไม่มีเจ้าของยัง Redirect ได้ แต่ไม่แสดงในประวัติของบัญชีใหม่ ไม่โอนให้บัญชีแรกอัตโนมัติ
+- ไม่มี API ลบบัญชีหรือย้ายเจ้าของ จึงไม่ลบลิงก์ตามบัญชีโดยอัตโนมัติ
+
+## แหล่งอ้างอิงใน Repository
+
+- ตาราง links ตั้งต้น: [README](../README.md#สร้างฐานข้อมูล)
+- ตารางสมาชิกและ index: [001_auth.sql](../server/migrations/001_auth.sql)
+- การจัดการ session/password: [auth.js](../server/auth.js)
+- เจ้าของลิงก์และประวัติ: [linkRoutes.js](../server/linkRoutes.js)
+
+การเปลี่ยน schema ในอนาคตต้องมี migration และสำรองก่อน ไม่ใช้ไฟล์นี้แทน SQL และไม่ต้องรัน migration เดิมซ้ำเพียงเพราะปรับเอกสาร

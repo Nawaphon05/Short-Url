@@ -1,6 +1,6 @@
 # Data Flow Diagram — Short URL พร้อม Login
 
-สถานะ: แบบที่บันทึกก่อนพัฒนาและอัปเดตตาม Login/Sign up บน Branch `Feature/login` แล้ว ยังไม่ได้ Deploy รอบนี้
+สถานะ: ระบบปัจจุบันบน main Deploy บน Render แล้ว ผู้ใช้ยืนยัน QR มือถือและการแยกสองบัญชีผ่าน
 ภาพใช้ Mermaid เพื่อเปิดดูบน GitHub หรือ Markdown preview ที่รองรับ Mermaid
 
 ## Context Diagram (Process 0)
@@ -12,10 +12,10 @@ flowchart LR
     U[ผู้ใช้ที่สร้างและจัดการลิงก์]
     V[ผู้เปิดลิงก์ทั่วไป]
     P((0 ระบบ Short URL))
-    U -->|Email และ Password สำหรับสมัครหรือเข้าสู่ระบบ| P
+    U -->|Email Password และตัวเลือกจำการเข้าสู่ระบบ| P
     P -->|ผลสมัครหรือเข้าสู่ระบบ และ cookie session| U
-    U -->|cookie session และคำขอ Logout| P
-    P -->|ผล Logout และการล้าง cookie| U
+    U -->|cookie session และคำขอตรวจบัญชีหรือ Logout| P
+    P -->|ข้อมูลบัญชีหรือผล Logout และการล้าง cookie| U
     U -->|cookie session และ URL ต้นฉบับ| P
     P -->|ลิงก์สั้น หรือข้อผิดพลาด| U
     U -->|cookie session และคำขอประวัติหรือรีเฟรช| P
@@ -29,9 +29,9 @@ flowchart LR
 ผู้ใช้หนึ่งคนทำหน้าที่ทั้งสองบทบาทได้ ไม่ใช่ระบบแบ่งบทบาท Admin
 HTTP 302 ส่งให้เบราว์เซอร์ผู้เปิดลิงก์ แล้วเบราว์เซอร์ไปเว็บไซต์ปลายทางเอง Server ไม่ดึงเนื้อหาเว็บปลายทางมาเก็บ
 
-## DFD แตกกระบวนการหลัก
+## DFD Level 0 — กระบวนการหลัก
 
-ภาพนี้เรียก Level 1 เมื่อ Context เป็น Level 0; หากผู้ประเมินเรียกภาพแตกกระบวนการว่า Level 0 ให้ใช้ชื่อระดับตามเกณฑ์ โดยคงความหมายของภาพ
+แยกกระบวนการ 1.0–6.0 และแหล่งเก็บข้อมูลในขอบเขตเดียวกับ Context ด้านบน
 
 ```mermaid
 flowchart TB
@@ -48,16 +48,16 @@ flowchart TB
     D3[(D3 Sessions)]
 
     U -->|Email และ Password| P1
-    P1 -->|อีเมลสำหรับตรวจซ้ำ| D1
-    D1 -->|ผลค้นอีเมล| P1
     P1 -->|Email และ password hash พร้อม salt| D1
+    D1 -->|ผลบันทึกหรืออีเมลซ้ำจาก UNIQUE| P1
     P1 -->|ผลสมัครหรือข้อผิดพลาด ให้ Login หลังสมัคร| U
 
-    U -->|Email Password หรือคำขอ Logout พร้อม cookie| P2
+    U -->|Email Password ตัวเลือกจำ หรือคำขอตรวจบัญชีและ Logout พร้อม cookie| P2
     P2 -->|อีเมลสำหรับค้นผู้ใช้| D1
     D1 -->|รหัสผู้ใช้และ password hash| P2
-    P2 -->|สร้าง session หรือเพิกถอนเมื่อ Logout| D3
-    P2 -->|ผล Login หรือ Logout และ cookie| U
+    P2 -->|ตรวจ สร้าง หรือเพิกถอน session| D3
+    D3 -->|เจ้าของ session และเวลาหมดอายุหรือผลบันทึก| P2
+    P2 -->|ข้อมูลบัญชี ผล Login หรือ Logout และ cookie| U
 
     U -->|URL ต้นฉบับและ cookie session| P3
     P3 -->|token hash และเวลาเพื่อตรวจ session| D3
@@ -88,7 +88,7 @@ flowchart TB
 - คำขอสร้างและอ่านประวัติตรวจ session ที่ Backend ทุกครั้ง ไม่ใช่แค่ซ่อนหน้าบน Vue
 - QR สร้างจากลิงก์บน Frontend ด้วยไลบรารีเดิม ไม่เพิ่มตาราง QR หรืออัปโหลดภาพเข้า Server
 - DFD แสดงข้อมูลและกระบวนการ ไม่ใช่ลำดับคลิก หน้าจอ หรือแผนภาพ Microservice
-- ระบบเดิมอ่านประวัติรวม; Branch นี้เพิ่มสมาชิก session และกรองเจ้าของแล้ว ส่วน Render ยังไม่ได้อัปเดตในรอบนี้
+- ประวัติกรองเจ้าของก่อนแบ่งหน้าละ 10 รายการ ลิงก์เก่า user_id NULL ยังเปิดได้แต่ไม่แสดงในบัญชีใหม่
 
 ## เกณฑ์ทดสอบหลังพัฒนา
 
