@@ -104,7 +104,30 @@ Render Free รับ private-network inbound ไม่ได้ จึงใช
 
 หากใช้ database role แยกได้ แนะนำ Redirect มีเพียง SELECT คอลัมน์ที่ใช้และ UPDATE clicks เท่านั้น รอบนี้ไม่ได้เปลี่ยนสิทธิ์บัญชีฐานข้อมูลจริงให้โดยอัตโนมัติ
 
-## ย้อนกลับ
+## ทางเลือก Browser handoff สำหรับการปลุกบริการ
+
+Branch `fix/browser-redirect-handoff` เพิ่มโหมดเลือกใช้ ยังไม่ได้ Deploy/เปิดใช้งานออนไลน์ในรอบนี้ เหตุผลคือผู้ใช้ยืนยันว่าเปิด `/healthz` โดยตรงแล้ว Render แสดงหน้าปลุกบริการและกลับมาใช้ลิงก์ได้ ขณะที่คำขอ health จากบริการหลักเคยได้รับ 502 ตลอด 70 วินาที โหมดนี้เปลี่ยนเส้นทางการเปิด ไม่ได้อ้างว่าระบุสาเหตุภายใน Render ได้ทั้งหมด
+
+- ตั้ง `REDIRECT_SERVICE_MODE=browser` ที่บริการหลัก หลัง Redirect service เวอร์ชันใหม่พร้อมแล้ว
+- URL/QR ที่แชร์ยังเป็นโดเมนหลักเดิม บริการหลักตอบ 302 ไป `https://short-url-redirect.onrender.com/r/:code` โดยไม่เรียก health และไม่เพิ่มคลิก
+- Browser เปิดบริการ Redirect โดยตรง ให้โฮสต์จัดการหน้า loading/spin-up จากนั้น Redirect ตรวจลิงก์และเพิ่ม clicks เฉพาะ GET ที่ใช้ได้หนึ่งครั้ง ก่อนตอบ 302 ไปเว็บไซต์ต้นฉบับ
+- `/r/:code` บน Redirect เป็น public endpoint เช่นเดียวกับลิงก์สาธารณะเดิม ไม่ต้อง Login และไม่ใช้ service token ส่วน `/internal/links/:code` ยังตรวจ token และ API จัดการข้อมูลยังอยู่บริการหลัก
+- ตั้ง `PUBLIC_BASE_URL=https://short-url-4xil.onrender.com` ที่ Redirect service ด้วย เพื่อให้ปุ่มกลับหน้าเว็บในหน้าสถานะพากลับบริการหลัก ไม่มีการส่ง token ใน URL หรือ Browser
+- HEAD ที่โดเมนหลักตอบ 302 ไปบริการ Redirect โดยยังไม่รู้สถานะลิงก์ ต้องตาม Location ไปตรวจ HEAD ที่บริการ Redirect จึงได้สถานะสุดท้าย ไม่เพิ่ม clicks ทั้งสองทอด ลิงก์ไม่พบ/หมดอายุ/ถูกลบจะมี 404/410 ที่บริการ Redirect
+- หากบริการ Redirect ล่มจริง Browser อาจเห็นหน้าผิดพลาดจากโฮสต์แทนหน้า 503 ของ Gateway; โหมดนี้ไม่สามารถรับประกันเวลาเริ่ม Free service หรือกำจัดปัญหาโฮสต์ทุกชนิดได้
+
+### ลำดับ Deploy โหมดใหม่
+
+1. Merge โค้ด แล้วตรวจว่า Redirect service Deploy commit ใหม่ที่มี public `/r/:code` แล้ว (Root Directory เดิมอาจทำให้ข้าม Auto Deploy ถ้าเปลี่ยนเฉพาะโฟลเดอร์อื่น ต้องดู commit จริง)
+2. ใน Redirect service เพิ่ม PUBLIC_BASE_URL ของบริการหลักและ Deploy รอ Live; คง DATABASE_URL และ token เดิม ไม่สร้างฐานข้อมูลใหม่
+3. ตรวจ `curl.exe -I https://short-url-redirect.onrender.com/r/UQO3RCbu` ของลิงก์ที่ใช้ได้ ต้องตอบ 302 ไปปลายทางและคลิกไม่เพิ่ม; ไม่มีการทดสอบนี้กับข้อมูลจริงในรอบพัฒนาโหมดใหม่
+4. ในบริการหลักเพิ่ม REDIRECT_SERVICE_MODE=browser แล้ว Save/Deploy รอ Live; คง REDIRECT_SERVICE_URL/token/PUBLIC_BASE_URL เดิม
+5. ทดสอบการเปิดและคลิก จากนั้นปล่อย idle และเปิดจาก URL เดิมโดยไม่เปิด health ล่วงหน้า ต้องรอหน้า Render แล้วไปปลายทางได้ จึงจะยืนยันข้อนี้ผ่าน พร้อมทดสอบ QR, HEAD สองทอด และหน้า 404/410 ซ้ำ
+6. ย้อนกลับเป็น proxy ได้โดยตั้ง REDIRECT_SERVICE_MODE=proxy หรือเอาตัวแปรนี้ออกแล้ว Deploy; เอา REDIRECT_SERVICE_URL ออกทั้งหมดจะเป็น monolith ตามหัวข้อถัดไป
+
+ผลในเครื่อง: ชุดทดสอบ 5/5 ผ่านทั้ง local/proxy/browser, การนับคลิกพร้อมกัน, HEAD/หมดอายุ/ลบ และ API สิทธิ์เจ้าของ พร้อม Browser Desktop/Mobile ตรวจหน้า 410 ที่บริการ Redirect และปุ่มกลับบริการหลักผ่าน ยังไม่ถือว่า idle บน Render ผ่านจนผู้ใช้ทดสอบหลัง Deploy
+
+## ย้อนกลับสู่ Monolith
 
 เอา REDIRECT_SERVICE_URL ออกจาก Environment ของบริการหลักแล้ว Deploy ใหม่ เพื่อเลือก local rollback mode หรือ Deploy commit monolith เดิม PUBLIC_BASE_URL และ schema ไม่เปลี่ยน ไม่ต้อง Restore ทับหรือลบตาราง ปิดบริการ Redirect ได้หลังยืนยันว่าบริการหลักกลับมาทำงานแล้ว
 

@@ -43,6 +43,9 @@ router.get('/:code', async (req, res) => {
   const { code } = req.params;
   if (!/^[A-Za-z0-9_-]{3,48}$/.test(code)) return page(res,404,'not-found');
   const config = getRedirectConfig();
+  // Let the visitor's browser reach the hosting wake-up page directly. This
+  // hop never resolves/increments a link or exposes service credentials.
+  if (config.mode === 'browser') return res.redirect(302, `${config.origin}/r/${encodeURIComponent(code)}`);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeout);
   const disconnect = () => { if (!res.writableEnded) controller.abort(); };

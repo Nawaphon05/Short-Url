@@ -60,6 +60,8 @@ flowchart TB
 
 ## ข้อจำกัด
 
+ทางเลือกใหม่ใน Branch fix/browser-redirect-handoff (ยังไม่เปิดออนไลน์): เมื่อ REDIRECT_SERVICE_MODE=browser Gateway ตอบ 302 ให้ Browser เปิด public `/r/:code` ของ Redirect service โดยตรง แทนการเรียกจาก Server เพื่อให้ Browser ผ่านหน้าปลุกบริการของโฮสต์ จากนั้น Redirect จึงตอบ 302 ไปปลายทางหรือหน้าสถานะ ใช้ DB เดิมและนับคลิกที่ Redirect เท่านั้น ไม่มี token ใน Browser ส่วนภาพด้านบนยังแสดงโหมด proxy ที่ Deploy อยู่ ดูลำดับเปิดใช้และความหมาย HEAD สองทอดใน [MICROSERVICES.md](MICROSERVICES.md#ทางเลือก-browser-handoff-สำหรับการปลุกบริการ)
+
 ใช้ PostgreSQL ร่วมกัน จึงยังต้องประสาน schema, สิทธิ์ และการสำรองร่วมกัน ไม่มี distributed transaction, service discovery, queue หรือ exactly-once event analytics การเพิ่ม clicks เป็น atomic SQL ต่อคำขอที่ประมวลผลได้
 
 Render Free ทั้งสอง Web Services รับคำขอผ่าน HTTPS สาธารณะ (Free ไม่รับ private network inbound) token จึงจำเป็น โควตาชั่วโมงรวมและ cold start ต้องตรวจใน Dashboard ดู [ข้อจำกัด Render](https://render.com/docs/free)
