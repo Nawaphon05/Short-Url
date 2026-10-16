@@ -4,6 +4,8 @@ Merge PR #7 เข้า `main` แล้ว Deploy commit `8644b34` บน Rend
 
 ## ขอบเขต
 
+สถานะล่าสุด: Merge โหมด browser handoff commit `7f09f71` และ Deploy ทั้งสองบริการแล้ว บริการหลักตั้ง REDIRECT_SERVICE_MODE=browser, Redirect ตั้ง PUBLIC_BASE_URL เป็นเว็บหลัก ผล curl ยืนยัน Location ไปโดเมน Redirect ผู้ใช้ยืนยันเปิดหลังพัก 15 นาทีได้ในรอบทดสอบนี้ ดู [ผลล่าสุด](SUBMISSION.md#ผลออนไลน์ล่าสุดในโหมด-browser)
+
 - `server`: Vue build, สมาชิก, จัดการลิงก์ และ Gateway `/r/:code`
 - `redirect-service`: ตรวจลิงก์หมดอายุ/ถูกลบ เพิ่ม clicks เฉพาะ GET และคืนสถานะ Redirect
 - ฐานข้อมูล PostgreSQL ร่วมกัน ไม่มี migration ใหม่ในรอบนี้
@@ -49,9 +51,12 @@ node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('h
 REDIRECT_SERVICE_URL=http://localhost:3001
 REDIRECT_SERVICE_TOKEN=replace-with-generated-random-token
 REDIRECT_SERVICE_TIMEOUT_MS=70000
+REDIRECT_SERVICE_MODE=browser
 ```
 
 อย่าใช้ข้อความตัวอย่างเป็น token จริง ใน server/.env คง PORT และ PUBLIC_BASE_URL ของบริการหลัก เช่น 3000 และ http://localhost:3000
+
+ใน redirect-service/.env ตั้ง PUBLIC_BASE_URL=http://localhost:3000 ให้กลับหน้าเว็บหลักได้ โหมด browser ใช้ public /r โดยไม่ส่ง token ไป Browser หากต้องการทดสอบ proxy ให้เปลี่ยน REDIRECT_SERVICE_MODE=proxy ส่วน local launcher dev:services ใช้โหมดจาก Environment ถ้าไม่ตั้งจะเป็น proxy; ทดสอบ browser แบบตั้งค่าทีละบริการตามส่วนนี้เพื่อให้พอร์ตและปุ่มกลับเว็บหลักตรงกัน
 
 Terminal 1 จากรากโปรเจกต์:
 
@@ -68,7 +73,7 @@ npm.cmd start --prefix server
 
 ต้องเห็น `Redirect service ready` ที่บริการ Redirect และ `Redirect mode: remote service` ที่บริการหลัก จากนั้นเปิดโดเมน/พอร์ตของบริการหลัก รันสองบริการก่อนใช้งาน ปิดด้วย Ctrl+C และรีสตาร์ตหลังแก้ Backend/.env
 
-## API ระหว่างบริการ
+## API ระหว่างบริการสำหรับโหมด proxy
 
 `GET /internal/links/:code` และ `HEAD /internal/links/:code` ต้องมี `Authorization: Bearer <REDIRECT_SERVICE_TOKEN>` เสมอ ไม่ส่ง cookie ผู้ใช้หรือ Authorization ของ Browser ต่อไป
 
@@ -84,9 +89,9 @@ Gateway ไม่ตาม Location ของบริการปลายท�
 
 Timeout ค่าเริ่มต้น 70 วินาที รองรับ cold start บางกรณี กำหนดได้ 100–90000 ms ไม่มี automatic retry หรือ fallback ไป SQL เดิมเมื่อเปิด remote mode เพราะคำขอที่ timeout อาจเพิ่มคลิกสำเร็จไปแล้ว การนับเป็นจำนวนคำขอ GET ที่ประมวลผล ไม่ใช่จำนวนผู้ที่เห็นหน้าเว็บสำเร็จ และการลองใหม่ด้วยตนเองอาจเพิ่มอีกหนึ่งคลิก
 
-การแก้บน Branch `fix/redirect-cold-start` (ยังไม่ Deploy): ก่อนส่งคำขอเปิดลิงก์ Gateway ตรวจ `/healthz` ให้ได้ JSON `status=ok, service=redirect` หากโฮสต์ตอบหน้าโหลด/บริการยังไม่พร้อม จะตรวจซ้ำห่างกัน 1 วินาที ภายใน timeout เดียวกันรวมทั้งขั้นเปิดลิงก์ ไม่ส่ง token หรือ cookie ใน health probe และไม่ส่งคำขอที่เพิ่ม clicks ซ้ำ หากบริการยังไม่พร้อมเมื่อหมดเวลา แสดง 503 ตามเดิม ขั้นนี้เพิ่ม health request หนึ่งครั้งในกรณีบริการพร้อมอยู่แล้ว ไม่ได้ทำให้ Free service ตื่นทันทีหรือรับประกันว่าจะไม่เกิด 503
+โหมด proxy ที่ Deploy ในรอบก่อนเพิ่มการรอ `/healthz` ให้ได้ JSON `status=ok, service=redirect` ตรวจซ้ำห่างกัน 1 วินาทีภายใน timeout รวมก่อนเปิดลิงก์ ไม่ส่ง token/cookie ใน health probe และไม่ส่งคำขอเพิ่มคลิกซ้ำ การแก้ดังกล่าวถูก Merge/Deploy แล้ว แต่ยังพบ readiness timeout หลังพัก จึงเปลี่ยนออนไลน์ไปใช้ browser
 
-ผลหลัง Deploy การแก้รอบแรก: ผู้ใช้ยังพบ `Redirect request failed: readiness timeout` หลังพัก จึงยังไม่ถือว่าแก้ปัญหาออนไลน์ผ่าน การแก้ถัดมาบน Branch `fix/redirect-readiness-timeout` (ยังไม่ Deploy) จำกัด health probe แต่ละครั้ง 5 วินาทีรวมการอ่าน body โดยยังใช้เวลารวมเดิม แล้วตรวจใหม่หลัง 1 วินาทีเฉพาะ health กรณี connection/body ค้างจึงไม่กินเวลารอทั้งหมดในครั้งเดียว เพิ่ม Logs `Redirect readiness exhausted` ที่มี attempts/elapsedMs/last และ `Redirect readiness recovered` เมื่อฟื้นตัว ไม่บันทึก token/URL ฐานข้อมูล/เนื้อหา response ต้องเก็บ Logs เหตุการณ์จริงหลัง Deploy ก่อนสรุปสาเหตุ
+การแก้ถัดมาที่ Merge/Deploy แล้วจำกัด health probe ครั้งละ 5 วินาทีรวม body เพิ่ม Logs attempts/elapsedMs/last โดยไม่บันทึก secrets แต่ผู้ใช้ยังพบ `attempts=67, elapsedMs=70001, last=http-502` จึงไม่ถือว่าการแก้ proxy ทำให้เปิดหลังพักผ่าน ปัจจุบันโค้ดนี้คงไว้สำหรับผู้เลือกใช้โหมด proxy เท่านั้น
 
 `GET /healthz` ของ Redirect ตรวจการเชื่อม DB ตอบ status/service โดยไม่เผยข้อมูลบัญชี ส่วน `/api/health` เดิมเป็นสถานะบริการหลัก ไม่ได้ตรวจบริการ Redirect ทุกครั้ง
 
@@ -106,7 +111,7 @@ Render Free รับ private-network inbound ไม่ได้ จึงใช
 
 ## ทางเลือก Browser handoff สำหรับการปลุกบริการ
 
-Branch `fix/browser-redirect-handoff` เพิ่มโหมดเลือกใช้ ยังไม่ได้ Deploy/เปิดใช้งานออนไลน์ในรอบนี้ เหตุผลคือผู้ใช้ยืนยันว่าเปิด `/healthz` โดยตรงแล้ว Render แสดงหน้าปลุกบริการและกลับมาใช้ลิงก์ได้ ขณะที่คำขอ health จากบริการหลักเคยได้รับ 502 ตลอด 70 วินาที โหมดนี้เปลี่ยนเส้นทางการเปิด ไม่ได้อ้างว่าระบุสาเหตุภายใน Render ได้ทั้งหมด
+โหมดจาก Branch `fix/browser-redirect-handoff` Merge เข้า main และ Deploy commit `7f09f71` แล้ว เปิดใช้งานออนไลน์ด้วย REDIRECT_SERVICE_MODE=browser เหตุผลคือ Browser เปิดปลุกบริการได้ตามหลักฐาน แต่คำขอ health จากบริการหลักเคยได้รับ 502 จนครบ 70 วินาที โหมดนี้เปลี่ยนเส้นทางการเปิด ไม่ได้อ้างว่าระบุสาเหตุภายใน Render ได้ทั้งหมด
 
 - ตั้ง `REDIRECT_SERVICE_MODE=browser` ที่บริการหลัก หลัง Redirect service เวอร์ชันใหม่พร้อมแล้ว
 - URL/QR ที่แชร์ยังเป็นโดเมนหลักเดิม บริการหลักตอบ 302 ไป `https://short-url-redirect.onrender.com/r/:code` โดยไม่เรียก health และไม่เพิ่มคลิก
@@ -125,7 +130,7 @@ Branch `fix/browser-redirect-handoff` เพิ่มโหมดเลือก
 5. ทดสอบการเปิดและคลิก จากนั้นปล่อย idle และเปิดจาก URL เดิมโดยไม่เปิด health ล่วงหน้า ต้องรอหน้า Render แล้วไปปลายทางได้ จึงจะยืนยันข้อนี้ผ่าน พร้อมทดสอบ QR, HEAD สองทอด และหน้า 404/410 ซ้ำ
 6. ย้อนกลับเป็น proxy ได้โดยตั้ง REDIRECT_SERVICE_MODE=proxy หรือเอาตัวแปรนี้ออกแล้ว Deploy; เอา REDIRECT_SERVICE_URL ออกทั้งหมดจะเป็น monolith ตามหัวข้อถัดไป
 
-ผลในเครื่อง: ชุดทดสอบ 5/5 ผ่านทั้ง local/proxy/browser, การนับคลิกพร้อมกัน, HEAD/หมดอายุ/ลบ และ API สิทธิ์เจ้าของ พร้อม Browser Desktop/Mobile ตรวจหน้า 410 ที่บริการ Redirect และปุ่มกลับบริการหลักผ่าน ยังไม่ถือว่า idle บน Render ผ่านจนผู้ใช้ทดสอบหลัง Deploy
+ผลในเครื่อง: ชุดทดสอบ 5/5 ผ่านทั้ง local/proxy/browser, การนับคลิกพร้อมกัน, HEAD/หมดอายุ/ลบ และ API สิทธิ์เจ้าของ พร้อม Browser Desktop/Mobile ตรวจหน้า 410 ที่บริการ Redirect และปุ่มกลับบริการหลักผ่าน ผลออนไลน์หลังเปิดโหมด: curl ยืนยันเส้นทาง handoff และผู้ใช้ยืนยันเปิดได้หลังพัก 15 นาที รายการ HEAD/QR/หน้าสถานะในโหมด browser ที่ยังไม่มีหลักฐานซ้ำระบุใน SUBMISSION ไม่ใช้ผล proxy ติ๊กแทน
 
 ## ย้อนกลับสู่ Monolith
 
