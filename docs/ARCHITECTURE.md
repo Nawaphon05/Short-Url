@@ -1,8 +1,8 @@
 ﻿# Architecture Diagram — Short URL
 
-## Branch Microservices
+## Microservices ที่ Deploy แล้ว
 
-Branch feature/microservices แยก Redirect เป็นบริการที่รันและ Deploy ต่าง process จากบริการหลักแล้ว โหมดสองบริการทดสอบในเครื่อง ยังไม่ได้เปิดบน Render เว็บออนไลน์เดิมยังเป็น monolith หลัง PR #5/6 จนกว่าจะ Deploy และตั้งค่าตาม [MICROSERVICES.md](MICROSERVICES.md)
+Merge PR #7 เข้า main และ Deploy commit 8644b34 วันที่ 16 ตุลาคม 2026 บริการหลัก https://short-url-4xil.onrender.com ขึ้น Redirect mode: remote service ส่วน https://short-url-redirect.onrender.com ขึ้น Redirect service ready ผู้ใช้ยืนยัน Redirect/QR/นับคลิก หมดอายุ และลบออนไลน์ตาม [SUBMISSION.md](SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7) ข้อที่ยังไม่ตรวจซ้ำคงสถานะรอยืนยัน
 
 ทั้งสองบริการใช้ Node.js/Express JavaScript และ PostgreSQL เดิมร่วมกัน เป็นการแยกบริการที่ยังมี coupling ด้าน schema ไม่ใช่ database-per-service ไม่มี migration ใหม่
 
@@ -11,7 +11,7 @@ flowchart TB
     B["Browser ผู้ใช้ / มือถือ<br/>Vue และ QR"]
     V["Browser ผู้รับลิงก์<br/>ไม่ต้อง Login"]
     Git["GitHub source<br/>Build / Deploy แยกบริการ"]
-    subgraph Hosting["Render — แบบที่เตรียม Deploy"]
+    subgraph Hosting["Render — Deploy สองบริการแล้ว"]
         subgraph Core["Web Service 1 — บริการหลัก"]
             UI["Vue build: client/dist"]
             API["Auth / จัดการลิงก์<br/>สร้าง ค้นหา แก้ชื่อ soft delete"]

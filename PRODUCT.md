@@ -15,7 +15,7 @@ web
 - Vue + CSS, Node.js/Express JavaScript และ PostgreSQL คงเทคโนโลยีเดิม
 - ระบบบน main มี Sign up, Login, Logout และประวัติส่วนตัว ลิงก์เก่ายังเปิดได้แต่ไม่มีเจ้าของ จำนวนคลิกรวมการเปิดซ้ำ
 - Deploy บน Render จาก main แล้ว พร้อม migration สมาชิก ผู้ใช้ยืนยัน QR มือถือและการแยกบัญชีผ่าน
-- Architecture Diagram อยู่ใน docs/ARCHITECTURE.md เวอร์ชันออนไลน์ที่ยืนยันยังเป็น Backend เดียว ส่วน Branch feature/microservices แยกบริการหลักและ Redirect เป็นสอง process โดยใช้ PostgreSQL ร่วมกัน
+- Architecture Diagram อยู่ใน docs/ARCHITECTURE.md main หลัง PR #7 Deploy บริการหลักและ Redirect แยกกันแล้ว โดยใช้ PostgreSQL ร่วมกัน
 
 ## Brand Commitments
 
@@ -31,4 +31,4 @@ web
 
 ## งานรอบ Microservices
 
-Branch feature/microservices แยก Redirect service พร้อม Gateway รักษา URL เดิมและ token ระหว่างบริการ ใช้ PostgreSQL ร่วมกัน ไม่มี migration ใหม่ ทดสอบสอง process ในเครื่องแล้ว ยังไม่ Deploy ออนไลน์ ธีมแดง–ชาร์โคลและ animation Login/Logout เดิมคงไว้ เพิ่ม feedback หลังแก้ชื่อ/ลบ และปุ่มลองใหม่ในหน้า 503
+PR #7 แยก Redirect service พร้อม Gateway รักษา URL เดิมและ token ระหว่างบริการ ใช้ PostgreSQL ร่วมกัน ไม่มี migration ใหม่ Deploy commit 8644b34 ออนไลน์แล้ว ผู้ใช้ยืนยันสร้าง/เปิดลิงก์ QR มือถือ คลิกเพิ่ม หมดอายุคลิกไม่เพิ่ม และลบหายจากประวัติ/ค้นหาพร้อมหน้า 410 ธีมแดง–ชาร์โคลและ UI ใหม่ขึ้นออนไลน์แล้ว เคยพบ 503 ชั่วคราวและกลับมาทำงาน สาเหตุยังไม่ยืนยัน ดูข้อที่รอทดสอบซ้ำใน docs/SUBMISSION.md

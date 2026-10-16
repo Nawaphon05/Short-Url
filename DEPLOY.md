@@ -4,7 +4,7 @@
 
 ## การแยกบริการรอบใหม่
 
-Branch feature/microservices ยังไม่ได้ Deploy เว็บออนไลน์ที่ระบุด้านล่างเป็นเวอร์ชัน monolith ที่ยืนยันแล้ว ใช้ [คู่มือ Microservices](docs/MICROSERVICES.md) สำหรับสร้างบริการ Redirect แยก ตั้ง token และค่อยเปิด remote mode หลังบริการใหม่พร้อม ไม่มี SQL migration ใหม่ และยังไม่ได้เปลี่ยนค่า Environment/บริการจริงในรอบพัฒนา
+PR #7 Merge เข้า main แล้ว Deploy commit 8644b34 วันที่ 16 ตุลาคม 2026 ทั้งบริการหลักและ https://short-url-redirect.onrender.com ขึ้น Live บริการหลักใช้ Redirect mode: remote service แล้ว ใช้ [คู่มือ Microservices](docs/MICROSERVICES.md) สำหรับค่าตั้งแต่ละบริการและ rollback ไม่มี SQL migration ใหม่ ผลออนไลน์ล่าสุดและเหตุการณ์ 503 ชั่วคราวอยู่ใน [SUBMISSION.md](docs/SUBMISSION.md#ผลออนไลน์หลัง-deploy-pr-7)
 
 ## สถานะ Deploy ล่าสุด
 

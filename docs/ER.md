@@ -4,7 +4,7 @@
 
 ## การใช้ข้อมูลในโหมดสองบริการ
 
-Branch feature/microservices ไม่เพิ่มตารางหรือคอลัมน์ บริการหลักดูแล users/sessions และข้อมูล links ส่วน redirect-service อ่าน code/original_url/expires_at/deleted_at และ UPDATE clicks ในตาราง links เดิม ขอบเขตการใช้ฐานข้อมูลร่วมกันอธิบายใน [Architecture](ARCHITECTURE.md) ไม่อ้างว่าแยกฐานข้อมูลอิสระ
+main หลัง PR #7 Deploy สองบริการแล้วโดยไม่เพิ่มตารางหรือคอลัมน์ บริการหลักดูแล users/sessions และข้อมูล links ส่วน redirect-service อ่าน code/original_url/expires_at/deleted_at และ UPDATE clicks ในตาราง links เดิม ขอบเขตการใช้ฐานข้อมูลร่วมกันอธิบายใน [Architecture](ARCHITECTURE.md) ไม่อ้างว่าแยกฐานข้อมูลอิสระ
 
 ## ความสัมพันธ์ฐานข้อมูล
 
