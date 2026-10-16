@@ -7,6 +7,7 @@
 ทั้งสองบริการใช้ Node.js/Express JavaScript และ PostgreSQL เดิมร่วมกัน เป็นการแยกบริการที่ยังมี coupling ด้าน schema ไม่ใช่ database-per-service ไม่มี migration ใหม่
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}}}%%
 flowchart TB
     B["Browser ผู้ใช้ / มือถือ<br/>Vue และ QR"]
     V["Browser ผู้รับลิงก์<br/>ไม่ต้อง Login"]
@@ -14,11 +15,11 @@ flowchart TB
     subgraph Hosting["Render — Deploy สองบริการแล้ว"]
         subgraph Core["Web Service 1 — บริการหลัก"]
             UI["Vue build: client/dist"]
-            API["Auth / จัดการลิงก์<br/>สร้าง ค้นหา แก้ชื่อ soft delete"]
+            API["Auth / จัดการลิงก์<br/>สร้าง ค้นหา แก้ชื่อ soft<br/>delete"]
             Gateway["Gateway /r/:code<br/>คงโดเมนและ QR เดิม"]
         end
         subgraph Service["Web Service 2 — Redirect"]
-            Resolve["Public /r/:code<br/>ตรวจหมดอายุ / ถูกลบ<br/>GET เพิ่ม clicks, HEAD ไม่เพิ่ม"]
+            Resolve["Public /r/:code<br/>ตรวจหมดอายุ / ถูกลบ<br/>GET เพิ่ม clicks, HEAD<br/>ไม่เพิ่ม"]
         end
         DB[("PostgreSQL ร่วมกัน<br/>users / sessions / links")]
     end
@@ -30,11 +31,11 @@ flowchart TB
     B <-->|"JSON และ session cookie"| API
     API <-->|"SQL สมาชิกและข้อมูลลิงก์"| DB
     V -->|"GET / HEAD URL เดิม"| Gateway
-    Gateway -->|"302 Location ไปโดเมน Redirect<br/>ไม่เพิ่มคลิก / ไม่มี token ใน URL"| V
+    Gateway -->|"302 Location ไปโดเมน<br/>Redirect<br/>ไม่เพิ่มคลิก / ไม่มี token<br/>ใน URL"| V
     V -->|"HTTPS GET หรือ HEAD<br/>โฮสต์แสดงหน้าปลุกเมื่อบริการพัก"| Resolve
-    Resolve -->|"302 ไปปลายทาง หรือหน้า 404 / 410 / 503"| V
+    Resolve -->|"302 ไปปลายทาง หรือหน้า 404<br/>/ 410 / 503"| V
     Resolve <-->|"SQL ตรวจสถานะ<br/>และ UPDATE clicks"| DB
-    V -->|"เฉพาะ 302: Browser เปิดปลายทาง"| Target
+    V -->|"เฉพาะ 302: Browser<br/>เปิดปลายทาง"| Target
     Admin <-->|"External connection / SSL"| DB
 ```
 
