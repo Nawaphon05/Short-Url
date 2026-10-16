@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, computed, nextTick } from 'vue';
 import { api } from '../api';
 const emit = defineEmits(['authenticated']);
@@ -73,7 +73,7 @@ async function submit(event) {
       </div>
       <h1>ลิงก์ของคุณ<br>จัดการได้ในที่เดียว</h1>
       <p class="intro">ย่อลิงก์ แชร์ผ่าน QR Code<br>และติดตามจำนวนคลิกในบัญชีของคุณ</p>
-      <div class="auth-capabilities"><span>ลิงก์ส่วนตัว</span><span>QR Code</span><span>จำนวนคลิก</span></div>
+      <div class="auth-capabilities"><span>ประวัติส่วนตัว</span><span>QR Code</span><span>จัดการอายุลิงก์</span></div>
       <p class="auth-note">คนรับลิงก์เปิดได้ทันที โดยไม่ต้องมีบัญชี</p>
     </div>
     <section class="auth-panel">
@@ -83,7 +83,7 @@ async function submit(event) {
       </div>
       <Transition name="page" mode="out-in" @after-enter="emailInput?.focus()">
         <form :key="mode" :name="signup ? 'signup' : 'login'" autocomplete="on" class="auth-form" :aria-busy="busy" @submit.prevent="submit">
-          <h2 id="auth-title">{{ signup ? 'Create your account' : 'Welcome back' }}</h2>
+          <h2 id="auth-title" tabindex="-1">{{ signup ? 'Create your account' : 'Welcome back' }}</h2>
           <p class="intro">{{ signup ? 'สมัครบัญชีเพื่อเก็บลิงก์ของคุณแยกเป็นส่วนตัว' : 'Login เพื่อสร้างลิงก์และดูประวัติของคุณ' }}</p>
           <div class="auth-field"><label for="auth-email">Email</label><input id="auth-email" name="username" ref="emailInput" v-model="email" type="email" autocomplete="username" maxlength="254" :readonly="busy" required /></div>
           <div class="auth-field"><label for="auth-password">Password</label><div class="password-field"><input id="auth-password" name="password" v-model="password" :type="visible ? 'text' : 'password'" :autocomplete="signup ? 'new-password' : 'current-password'" :minlength="signup ? 6 : 1" :maxlength="signup ? 12 : 128" :pattern="signup ? '(?=.*[A-Z]).{6,12}' : undefined" :readonly="busy" :aria-describedby="signup ? 'password-help' : undefined" required /><button type="button" :disabled="busy" :aria-pressed="visible" @click="visible = !visible"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path v-if="visible" d="m3 3 18 18"/></svg><span class="sr-only">{{ visible ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน' }}</span></button></div><div v-if="signup" id="password-help" class="password-guidance"><p :class="{ complete: password.length >= 6 && password.length <= 12 }">{{ password.length >= 6 && password.length <= 12 ? 'ความยาวครบแล้ว' : 'ใช้รหัสผ่าน 6–12 ตัวอักษร' }}<span>{{ password.length }}/12</span></p><div class="password-length" aria-hidden="true"><span :style="{ width: `${Math.min(password.length / 6, 1) * 100}%` }"></span></div><small>ต้องมีตัวพิมพ์ใหญ่ A–Z อย่างน้อย 1 ตัว</small></div></div>

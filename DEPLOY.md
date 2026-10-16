@@ -1,6 +1,12 @@
-﻿# Deploy Short URL บน Render
+# Deploy Short URL บน Render
 
 เว็บ https://short-url-4xil.onrender.com Deploy จาก `main` แล้ว ผู้ใช้ยืนยัน migration สำเร็จ และทดสอบ QR มือถือกับการแยกบัญชีผ่าน วันที่ 16 ตุลาคม 2026
+
+## ก่อน Deploy ฟังก์ชันใหม่
+
+Branch feature/link-management เพิ่ม [002_link_management.sql](server/migrations/002_link_management.sql): ขยาย links.code เป็น varchar(48), เพิ่ม title และ expires_at ยังไม่ได้ใช้บน Render ในรอบนี้ สำรองฐานข้อมูลล่าสุด แล้วรัน 002 บนฐานข้อมูลปลายทางและรัน [003_soft_delete.sql](server/migrations/003_soft_delete.sql) เพื่อเพิ่ม deleted_at ก่อน Deploy โค้ดใหม่ การ Build ไม่รัน migration ให้อัตโนมัติ ฐานข้อมูลใหม่ต้องสร้าง links และรัน 001 → 002 → 003 ตามลำดับ
+
+ทดสอบหลัง Deploy: สร้างรหัสเอง/รหัสซ้ำ ตั้งชื่อ/แก้ชื่อ ค้นหาข้ามหน้าและแยกบัญชี ตรวจ GET/HEAD ของลิงก์หมดอายุตอบ 410 และจำนวนคลิกไม่เพิ่ม พร้อมเปิดลิงก์เก่าและ QR เดิม ทดสอบลบ/ยกเลิกลบ แยกสิทธิ์เจ้าของ รายการหายจากประวัติ และ code ที่ลบแล้วนำกลับมาใช้ไม่ได้
 
 ## Web Service
 
@@ -14,9 +20,9 @@
 
 ## ฐานข้อมูล
 
-สำหรับฐานข้อมูลใหม่ สร้าง links ตาม [README](README.md#สร้างฐานข้อมูล) แล้วรัน [migration สมาชิก](server/migrations/001_auth.sql) บนฐานข้อมูลปลายทางด้วยบัญชีที่มีสิทธิ์ ไม่ต้อง CREATE DATABASE บน Render
+สำหรับฐานข้อมูลใหม่ สร้าง links ตาม [README](README.md#สร้างฐานข้อมูล) แล้วรัน [001 สมาชิก](server/migrations/001_auth.sql) → [002 จัดการลิงก์](server/migrations/002_link_management.sql) → [003 soft delete](server/migrations/003_soft_delete.sql) บนฐานข้อมูลปลายทางด้วยบัญชีที่มีสิทธิ์ ไม่ต้อง CREATE DATABASE บน Render
 
-ฐานข้อมูลเดิมต้องสำรองก่อน migration คงลิงก์ user_id NULL ไว้ ไม่ยกให้บัญชีใหม่ IF NOT EXISTS ไม่แก้โครงสร้างเดิมที่ผิดโดยอัตโนมัติ ฐานข้อมูลของงานนี้รัน migration แล้ว ไม่ต้องรันซ้ำทุก Deploy
+ฐานข้อมูลเดิมต้องสำรองก่อน migration คงลิงก์ user_id NULL ไว้ ไม่ยกให้บัญชีใหม่ IF NOT EXISTS ไม่แก้โครงสร้างเดิมที่ผิดโดยอัตโนมัติ ฐานข้อมูล Render ของงานนี้ยืนยันเฉพาะ migration 001 แล้ว ส่วน 002 และ 003 ยังรอดำเนินการก่อน Deploy ฟังก์ชันใหม่ เมื่อใช้ครบแล้วไม่ต้องรันซ้ำทุก Deploy
 
 pgAdmin เป็นเครื่องมือดูข้อมูล ฐานข้อมูลจริงอยู่บน Render ปิดคอมพิวเตอร์ได้ เว็บยังใช้ฐานข้อมูลออนไลน์ จากเครื่องใช้ External connection พร้อม SSL ส่วน Web Service ใช้ Internal connection
 

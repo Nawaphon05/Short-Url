@@ -24,6 +24,12 @@ test('auth, ownership, migration and public redirects against isolated local Pos
       const migration = await fs.readFile(path.join(__dirname, '../migrations/001_auth.sql'), 'utf8');
       await client.query(migration);
       await client.query(migration); // Reapplying must preserve existing data.
+      const management = (await fs.readFile(path.join(__dirname, '../migrations/002_link_management.sql'), 'utf8')).replace(/^\uFEFF/, '');
+      await client.query(management);
+      await client.query(management);
+      const softDelete = await fs.readFile(path.join(__dirname, '../migrations/003_soft_delete.sql'), 'utf8');
+      await client.query(softDelete);
+      await client.query(softDelete);
     } finally { await client.query('SET search_path TO public'); client.release(); }
     child = spawn(process.execPath, ['index.js'], {
       cwd: path.join(__dirname, '..'),
@@ -90,6 +96,70 @@ test('auth, ownership, migration and public redirects against isolated local Pos
     assert.equal(new Set([...first.items,...second.items].map(x=>x.id)).size,11);
     assert.equal((await (await call('/api/links',{cookie:b.cookie})).json()).items.length,0);
     for (const page of ['0','-1','1.5','bad','10001']) assert.equal((await call(`/api/links?page=${page}`,{cookie:a.cookie})).status,400);
+    // Link management: preserve legacy routes, isolate owners, and search across pages.
+    const createManaged = body => call('/api/links', { method: 'POST', cookie: a.cookie, body: { url: 'https://example.com/campaign', ...body } });
+    for (const custom_code of ['ab', 'has space', 'ไทย', 'a'.repeat(49), 123]) assert.equal((await createManaged({custom_code})).status,400);
+    for (const expires_at of ['not-a-date', '2020-01-01T00:00:00Z', '2030-01-01T00:00:00', 123]) assert.equal((await createManaged({expires_at})).status,400);
+    assert.equal((await createManaged({title:'x'.repeat(121)})).status,400);
+    const future = new Date(Date.now()+3600000).toISOString();
+    const managedResponse = await createManaged({title:'  สมัครงานบริษัท A  ',custom_code:'summer-sale',expires_at:future});
+    assert.equal(managedResponse.status,201);
+    const managed = await managedResponse.json();
+    assert.equal(managed.title,'สมัครงานบริษัท A'); assert.equal(managed.expires_at,future);
+    assert.equal((await createManaged({custom_code:'summer-sale'})).status,409);
+    assert.equal((await createManaged({custom_code:'legacy01'})).status,409);
+    assert.equal((await call('/api/links',{method:'POST',cookie:b.cookie,body:{url:'https://example.com',custom_code:'summer-sale'}})).status,409);
+    assert.equal((await call('/r/summer-sale',{method:'HEAD'})).status,302);
+    assert.equal((await call('/r/summer-sale')).status,302);
+    assert.equal((await call(`/api/links/${managed.id}`,{method:'PATCH',cookie:b.cookie,body:{title:'stolen'}})).status,404);
+    assert.equal((await call(`/api/links/${managed.id}`,{method:'PATCH',body:{title:'no session'}})).status,401);
+    assert.equal((await call(`/api/links/${managed.id}`,{method:'PATCH',cookie:a.cookie,body:{title:'x'.repeat(121)}})).status,400);
+    assert.equal((await call(`/api/links/${managed.id}`,{method:'PATCH',cookie:a.cookie,body:{title:'no origin'},headers:{Origin:'https://evil.example'}})).status,403);
+    const rename=await call(`/api/links/${managed.id}`,{method:'PATCH',cookie:a.cookie,body:{title:'New name',custom_code:'cannot-change'}});
+    assert.equal(rename.status,200); assert.equal((await rename.json()).code,'summer-sale');
+    const search = async(q,cookie=a.cookie) => (await (await call(`/api/links?q=${encodeURIComponent(q)}`,{cookie})).json()).items;
+    assert.equal((await search('NEW NAME')).length,1);
+    assert.equal((await search('summer-sale')).length,1);
+    assert.equal((await search('example.com/campaign')).length,1);
+    assert.equal((await search('summer-sale',b.cookie)).length,0);
+    assert.equal((await search('%')).length,0);
+    assert.equal((await search('page')).length,10);
+    assert.equal((await search('legacy01')).length,0);
+    assert.equal((await call('/api/links?q='+ 'x'.repeat(201),{cookie:a.cookie})).status,400);
+    const expiredResult=await pool.query(`UPDATE ${schema}.links SET expires_at=now()-interval '1 second' WHERE id=$1 RETURNING clicks`,[managed.id]);
+    for(const method of ['GET','HEAD']) { const response=await call('/r/summer-sale',{method}); assert.equal(response.status,410); assert.equal(response.headers.get('location'),null); assert.equal(response.headers.get('cache-control'),'no-store'); }
+    const unchanged=await pool.query(`SELECT clicks FROM ${schema}.links WHERE id=$1`,[managed.id]);
+    assert.equal(unchanged.rows[0].clicks,expiredResult.rows[0].clicks);
+    assert.equal((await call('/r/does-not-exist')).status,404);
+    assert.equal((await call('/r/legacy01')).status,302);
+    assert.equal((await createManaged({custom_code:'a'.repeat(48)})).status,201);
+    assert.equal((await call('/r/'+ 'a'.repeat(48))).status,302);
+    // Soft deletion: require owner + CSRF, reserve code, and never count deleted redirects.
+    const remove = (id,cookie=a.cookie,headers={}) => call(`/api/links/${id}`,{method:'DELETE',cookie,body:{},headers});
+    assert.equal((await remove(managed.id,b.cookie)).status,404);
+    assert.equal((await remove(managed.id,'')).status,401);
+    assert.equal((await remove(managed.id,a.cookie,{Origin:'https://evil.example'})).status,403);
+    assert.equal((await remove(managed.id,a.cookie,{'X-Short-URL-Client':''})).status,403);
+    assert.equal((await remove('bad')).status,404);
+    assert.equal((await remove(managed.id)).status,204);
+    assert.equal((await remove(managed.id)).status,404);
+    assert.equal((await search('summer-sale')).length,0);
+    assert.equal((await search('New name')).length,0);
+    assert.equal((await call(`/api/links/${managed.id}`,{method:'PATCH',cookie:a.cookie,body:{title:'cannot restore'}})).status,404);
+    for(const method of ['GET','HEAD']) {
+      const response=await call('/r/summer-sale',{method});
+      assert.equal(response.status,410); assert.equal(response.headers.get('location'),null);
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      if(method==='GET') assert.match(await response.text(),/ลิงก์นี้ถูกลบแล้ว/);
+    }
+    const tombstone=(await pool.query(`SELECT clicks,deleted_at,code FROM ${schema}.links WHERE id=$1`,[managed.id])).rows[0];
+    assert.ok(tombstone.deleted_at); assert.equal(tombstone.clicks,unchanged.rows[0].clicks);
+    assert.equal((await createManaged({custom_code:'summer-sale'})).status,409);
+    assert.equal((await call('/api/links',{method:'POST',cookie:b.cookie,body:{url:'https://example.com',custom_code:'summer-sale'}})).status,409);
+    const activeForDelete=await (await createManaged({custom_code:'delete-active'})).json();
+    assert.equal((await remove(activeForDelete.id)).status,204);
+    assert.equal((await call('/r/delete-active')).status,410);
+    assert.equal((await search('delete-active')).length,0);
     assert.equal((await call('/api/auth/logout',{method:'POST',cookie:a.cookie,body:{}})).status,204);
     assert.equal((await call('/api/auth/me',{cookie:a.cookie})).status,401);
     await pool.query(`UPDATE ${schema}.sessions SET expires_at=now()-interval '1 second',created_at=now()-interval '2 days' WHERE user_id=$1`,[b.user.id]);

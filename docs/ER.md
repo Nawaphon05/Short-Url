@@ -1,6 +1,6 @@
-﻿# ER Diagram — Short URL
+# ER Diagram — Short URL
 
-เอกสารระบบปัจจุบันบน `main` ซึ่ง Deploy บน Render แล้ว ผู้ใช้ยืนยันว่ารัน migration และทดสอบแยกสองบัญชีผ่าน แบบก่อนพัฒนาเก็บอยู่ในประวัติ Git ไม่ได้สร้างเอกสารย้อนหลังแทนประวัติเดิม
+แบบของ Branch feature/link-management หลัง migration 002 และ 003 (ทดสอบในเครื่อง ยังไม่ได้ Deploy รอบนี้) ระบบสมาชิกเดิมบน main ผ่านการทดสอบออนไลน์ที่ผู้ใช้ยืนยันแล้ว
 
 ## ความสัมพันธ์ฐานข้อมูล
 
@@ -18,7 +18,10 @@ erDiagram
     LINKS {
         bigint id PK
         bigint user_id FK "nullable for legacy links"
-        varchar(8) code UK
+        varchar(48) code UK
+        varchar(120) title
+        timestamptz expires_at "nullable means no expiry"
+        timestamptz deleted_at "nullable means not deleted"
         text original_url
         bigint clicks
         timestamptz created_at
@@ -46,7 +49,10 @@ erDiagram
 | users.created_at | timestamptz | NOT NULL, DEFAULT now() |
 | links.id | bigint | Identity, PK, NOT NULL |
 | links.user_id | bigint | Nullable, FK → users.id; ON DELETE NO ACTION |
-| links.code | varchar(8) | UNIQUE, NOT NULL; รหัสสุ่ม base64url 8 ตัว |
+| links.code | varchar(48) | UNIQUE, NOT NULL; สุ่ม 8 ตัวหรือผู้ใช้เลือก 3–48 ตัว API ตรวจรูปแบบ |
+| links.title | varchar(120) | NOT NULL, DEFAULT ว่าง; ชื่อแสดงผล แก้ได้โดยเจ้าของ |
+| links.deleted_at | timestamptz | Nullable; NULL ยังไม่ลบ มีค่าเมื่อเจ้าของยืนยันลบ เก็บแถวและ code ไว้ |
+| links.expires_at | timestamptz | Nullable; NULL ไม่หมดอายุ API รับเฉพาะอนาคตตอนสร้าง |
 | links.original_url | text | NOT NULL; API รับ HTTP(S) ไม่เกิน 4096 ตัวอักษร และไม่รับ URL ที่มี username/password |
 | links.clicks | bigint | NOT NULL, DEFAULT 0, CHECK >= 0; รวมการเปิดซ้ำ |
 | links.created_at | timestamptz | NOT NULL, DEFAULT now() |
@@ -73,11 +79,17 @@ erDiagram
 - ตรวจ expires_at ทุกคำขอที่ต้อง Login และล้าง session หมดอายุเมื่อ Login สำเร็จ
 - เก็บ Email ที่เลือกจำใน localStorage ได้ แต่ Password ให้ Password Manager ของเบราว์เซอร์จัดการ ไม่เก็บ session token หรือรหัสผ่านใน localStorage
 - ลิงก์เก่าไม่มีเจ้าของยัง Redirect ได้ แต่ไม่แสดงในประวัติของบัญชีใหม่ ไม่โอนให้บัญชีแรกอัตโนมัติ
+- รหัสไม่เปลี่ยนภายหลังและไม่ใช้รหัสหมดอายุซ้ำ เพื่อรักษาความหมายของ URL/QR ที่แชร์แล้ว
+- หมดอายุเมื่อ expires_at <= เวลา Server; GET/HEAD ตอบ 410 ไม่เพิ่มคลิก
+- DELETE /api/links/:id ตั้ง deleted_at เฉพาะเจ้าของ ไม่ลบแถวจริง ไม่แสดงในประวัติ/ค้นหา และแก้ชื่อไม่ได้หลังลบ
+- ลิงก์ที่ลบแล้วตอบ 410 พร้อมหน้าถูกลบ ไม่เพิ่มคลิก ไม่ Redirect ไม่คืนรหัสให้ใช้ซ้ำ ไม่มี API กู้คืน
 - ไม่มี API ลบบัญชีหรือย้ายเจ้าของ จึงไม่ลบลิงก์ตามบัญชีโดยอัตโนมัติ
 
 ## แหล่งอ้างอิงใน Repository
 
 - ตาราง links ตั้งต้น: [README](../README.md#สร้างฐานข้อมูล)
+- การลบลิงก์: [003_soft_delete.sql](../server/migrations/003_soft_delete.sql)
+- การจัดการลิงก์: [002_link_management.sql](../server/migrations/002_link_management.sql)
 - ตารางสมาชิกและ index: [001_auth.sql](../server/migrations/001_auth.sql)
 - การจัดการ session/password: [auth.js](../server/auth.js)
 - เจ้าของลิงก์และประวัติ: [linkRoutes.js](../server/linkRoutes.js)

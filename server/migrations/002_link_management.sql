@@ -1,0 +1,5 @@
+﻿BEGIN;
+ALTER TABLE links ALTER COLUMN code TYPE varchar(48);
+ALTER TABLE links ADD COLUMN IF NOT EXISTS title varchar(120) NOT NULL DEFAULT '';
+ALTER TABLE links ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+COMMIT;

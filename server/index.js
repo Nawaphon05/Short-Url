@@ -41,7 +41,7 @@ async function startServer() {
     await pool.query('SELECT id FROM links LIMIT 1');
     await pool.query('SELECT id FROM users LIMIT 1');
     await pool.query('SELECT token_hash FROM sessions LIMIT 1');
-    await pool.query('SELECT user_id FROM links LIMIT 1');
+    await pool.query('SELECT user_id, title, expires_at, deleted_at FROM links LIMIT 1');
 
     console.log('Connected to PostgreSQL');
 
